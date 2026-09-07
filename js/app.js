@@ -12,6 +12,7 @@ import {
 } from './daily.js';
 import { rollLog, record, summarise, accuracy, MAX_LISTED } from './recap.js';
 import { ruleFor } from './rules.js';
+import { SENTENCES, WORKS } from './sentences.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 const PROGRESS_KEY = 'conjugaison.progress.v1';
@@ -32,7 +33,8 @@ const DEFAULT_SETTINGS = {
 const DIRECTIONS = [
   ['produce', 'Give the form', 'parler → je parle'],
   ['recognise', 'Name the verb and tense', "j'étais → être, imparfait"],
-  ['mix', 'Mix both', 'alternates between the two'],
+  ['reading', 'In a sentence', 'Dumas, Hugo, Sue'],
+  ['mix', 'Mix both', 'alternates between the first two'],
 ];
 
 // ---------------------------------------------------------------- storage
@@ -73,10 +75,23 @@ if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTIN
 // A forward card keeps its three-part id, so review history recorded before
 // reverse cards existed still matches; reverse cards get a "|r" suffix and
 // are scheduled independently.
+const SENTENCE_BY_ID = new Map(SENTENCES.map((sentence) => [sentence.id, sentence]));
+
 const cardId = (inf, tense, person, direction) =>
   `${inf}|${tense}|${person}${direction === 'recognise' ? '|r' : ''}`;
 
 function parseCard(id) {
+  if (id.startsWith('sentence|')) {
+    const sentence = SENTENCE_BY_ID.get(id.slice('sentence|'.length));
+    if (!sentence) return { verb: undefined };
+    return {
+      verb: VERBS.find((v) => v.inf === sentence.inf),
+      tense: sentence.tense,
+      person: sentence.person,
+      direction: 'reading',
+      sentence,
+    };
+  }
   const [inf, tense, person, reverse] = id.split('|');
   return {
     verb: VERBS.find((v) => v.inf === inf),
@@ -92,6 +107,17 @@ function directions() {
 
 function pool() {
   const ids = [];
+  if (settings.direction === 'reading') {
+    // Sentence cards are not verb x tense x pronoun combinations, so the
+    // pronoun filter has nothing to say about them; deck and tense still do.
+    const inDeck = new Set(verbsForDeck(settings.deck).map((v) => v.inf));
+    for (const sentence of SENTENCES) {
+      if (settings.tenses.includes(sentence.tense) && inDeck.has(sentence.inf)) {
+        ids.push(`sentence|${sentence.id}`);
+      }
+    }
+    return ids;
+  }
   for (const verb of verbsForDeck(settings.deck)) {
     for (const tense of settings.tenses) {
       for (const person of settings.pronouns) {
@@ -172,11 +198,21 @@ function renderCard() {
   current = parseCard(queue[0]);
 
   const { verb, tense, person, direction } = current;
-  const reverse = direction === 'recognise';
+  const reverse = direction !== 'produce';
   const lead = $('prompt-lead');
   lead.textContent = '';
+  $('prompt-main').hidden = direction === 'reading';
+  $('prompt-sentence').hidden = direction !== 'reading';
 
-  if (reverse) {
+  if (direction === 'reading') {
+    const { text, start, end } = current.sentence;
+    $('card-tense').textContent = 'In a sentence';
+    $('card-gloss').hidden = true;
+    lead.textContent = 'Which verb is this, and which tense?';
+    const target = document.createElement('mark');
+    target.textContent = text.slice(start, end);
+    $('prompt-sentence').replaceChildren(text.slice(0, start), target, text.slice(end));
+  } else if (reverse) {
     // Naming the tense would give half the answer away, so a reverse card
     // shows the bare form and nothing else.
     $('card-tense').textContent = 'Verb and tense?';
@@ -221,8 +257,14 @@ function renderCard() {
  * go on, or the deck genuinely has nothing left to show you.
  */
 /** What a card asks and what it answers, whichever way round it runs. */
-function cardFaces({ verb, tense, person, direction }) {
+function cardFaces({ verb, tense, person, direction, sentence }) {
   const solution = answerFor(verb, tense, person);
+  if (direction === 'reading') {
+    return {
+      question: sentence.text.slice(sentence.start, sentence.end),
+      answer: `${verb.inf} · ${tenseLabel(tense).toLowerCase()}`,
+    };
+  }
   if (direction === 'recognise') return { question: solution, answer: verb.inf };
   return {
     question: `${verb.inf} · ${tenseLabel(tense).toLowerCase()} · ${PRONOUN_LABELS[person]}`,
@@ -314,7 +356,18 @@ function renderResult(verdict) {
   }
 
   const sub = $('answer-sub');
-  if (current.direction === 'recognise') {
+  const source = $('answer-source');
+  source.hidden = true;
+
+  if (current.direction === 'reading') {
+    const { work, chapter } = current.sentence;
+    $('answer').textContent = verb.inf;
+    sub.textContent = `${tenseLabel(tense)} · ${verb.en}`;
+    sub.hidden = false;
+    const { title, author } = WORKS[work];
+    source.textContent = `${title}${chapter ? `, ch. ${chapter}` : ''} — ${author}`;
+    source.hidden = false;
+  } else if (current.direction === 'recognise') {
     $('answer').textContent = verb.inf;
     // "je suis" is also suivre; "je finis" is also a passé simple. Naming the
     // other readings is the point, not a footnote — it is what makes a form
@@ -474,7 +527,7 @@ function grade_(gradeId) {
 function reveal() {
   if (answered) return;
   if (settings.mode !== 'type') return renderResult(null);
-  const check = current.direction === 'recognise' ? checkRecognition : checkAnswer;
+  const check = current.direction === 'produce' ? checkAnswer : checkRecognition;
   renderResult(check($('answer-input').value, current));
 }
 

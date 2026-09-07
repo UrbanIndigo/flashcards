@@ -144,9 +144,45 @@ out that a `-u` participle usually predicts the `-us` stem: *couru → courus*,
 *bu → but*. The imperfect subjunctive is built off the passé simple, so
 knowing one gives you the other.
 
-Sentences from actual novels are not included. Doing that properly means
-parsing real public-domain texts rather than quoting from memory, and
-inventing lines to attribute to Dumas would be worse than useless.
+### Reading real sentences
+
+Set **Direction** to *In a sentence* and the card shows a line from a novel
+with one verb highlighted:
+
+> Bientôt elle lui avoua qu'elle partageait son amour, quoiqu'il **dût**,
+> prévoyait-elle, leur causer de violents chagrins.
+>
+> → **devoir** · subjonctif imparfait
+> *Les Mystères de Paris*, ch. 14 — Eugène Sue
+
+641 sentences from *Le Comte de Monte-Cristo* (Dumas), *Les Mystères de
+Paris* (Sue) and *Le Dernier Jour d'un condamné* (Hugo) — all long out of
+copyright — built by `tools/extract-sentences.mjs`.
+
+Getting this right is mostly about refusing to guess. A card that highlighted
+*la porte* and called it *porter* would teach the opposite of what it is for,
+so two filters do the work:
+
+1. **A form only counts when it directly follows a subject pronoun.** That
+   rules out every noun homograph in one move — *il entre* is the verb,
+   *entre les deux* is not — and it fixes the person for free.
+2. **The form must have exactly one reading** across every verb and tense in
+   the app. *il vit* is *voir* in the passé simple or *vivre* in the présent,
+   and a sentence card cannot mark a defensible answer wrong, so it is
+   dropped.
+
+A test re-derives every highlighted span from the conjugator and fails if it
+is not exactly the form the card claims, so the corpus cannot drift away from
+the rest of the app.
+
+To rebuild from your own texts:
+
+```sh
+node tools/extract-sentences.mjs path/to/texts > js/sentences.js
+```
+
+Sentence ids are hashes of the sentence, so regenerating the corpus keeps
+your review history for any sentence that survives.
 
 ### The recap
 
@@ -295,5 +331,5 @@ The impératif and reflexive verbs (*se lever*) are out of scope. Verbs that
 take either auxiliary depending on meaning (*passer*, *sortir* used
 transitively) are listed with only their common one.
 
-Reading practice is on isolated forms, not sentences from real books — see
-the note in **Reading novels** above.
+Zola is not in the corpus — the texts available to build from were Dumas,
+Sue and Hugo. Any directory of French text can be added with the extractor.

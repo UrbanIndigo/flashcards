@@ -161,6 +161,24 @@ main {
 }
 #prompt-pronoun { color: var(--accent); }
 
+/* A sentence needs to read like prose, not like a headline. */
+.sentence {
+  margin: 6px 0 0;
+  font-family: var(--serif);
+  font-size: clamp(1.02rem, 4.2vw, 1.2rem);
+  line-height: 1.65;
+  text-align: left;
+  text-wrap: pretty;
+}
+.sentence mark {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  border-radius: 4px;
+  padding: 1px 3px;
+}
+.source { margin: 10px 0 0; font-size: .76rem; color: var(--ink-faint); font-style: italic; }
+
 /* ---------------------------------------------------------------- input */
 
 .answer-form { display: flex; flex-direction: column; gap: 12px; }
