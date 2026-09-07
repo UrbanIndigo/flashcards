@@ -17,6 +17,16 @@
   --warn: #8a5a00;
   --warn-soft: #fdf3e0;
 
+  --grade-again: #c0392b;
+  --grade-good: #1d7a4c;
+  --grade-easy: #2f4bd8;
+  --grade-ink: #ffffff;
+
+  --tier-known: #1f7a4d;
+  --tier-young: #d9911f;
+  --tier-learning: #cf4436;
+  --tier-new: #dedad2;
+
   --radius: 18px;
   --shadow: 0 1px 2px rgba(28, 27, 25, .06), 0 12px 32px -12px rgba(28, 27, 25, .18);
   --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
@@ -40,6 +50,15 @@
     --bad-soft: #33201e;
     --warn: #e8c07a;
     --warn-soft: #2e2718;
+    --grade-again: #ff9d95;
+    --grade-good: #62d9a0;
+    --grade-easy: #93a6ff;
+    --grade-ink: #14151b;
+
+    --tier-known: #62d9a0;
+    --tier-young: #e8b45c;
+    --tier-learning: #ff8b80;
+    --tier-new: #363a43;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 16px 40px -16px rgba(0, 0, 0, .7);
   }
 }
@@ -241,24 +260,30 @@ button { font: inherit; }
 
 /* --------------------------------------------------------------- grading */
 
-.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 22px; }
+/* Three buttons, told apart by colour before they are read: red is wrong,
+   green is right, blue retires the card. */
+.grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
 
 .grade {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 11px 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  padding: 14px 6px;
+  background: var(--grade-colour);
+  border: none;
   border-radius: 12px;
-  color: var(--ink);
+  color: var(--grade-ink);
   cursor: pointer;
 }
-.grade:hover { border-color: var(--ink-faint); }
-.grade.suggested { border-color: var(--accent); background: var(--accent-soft); }
-.grade b { font-size: .88rem; font-weight: 600; }
-.grade span { font-size: .7rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.grade-again { --grade-colour: var(--grade-again); }
+.grade-good { --grade-colour: var(--grade-good); }
+.grade-easy { --grade-colour: var(--grade-easy); }
+
+.grade:hover { filter: brightness(1.08); }
+.grade.suggested { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--grade-colour); }
+.grade b { font-size: .92rem; font-weight: 600; }
+.grade span { font-size: .7rem; opacity: .75; font-variant-numeric: tabular-nums; }
 
 /* ----------------------------------------------------------------- empty */
 
@@ -277,6 +302,55 @@ kbd {
   padding: 1px 5px;
 }
 @media (hover: none) { .hint { display: none; } }
+
+/* -------------------------------------------------------------- progress */
+
+.progress {
+  width: min(560px, 100%);
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 40px) clamp(18px, 4vh, 28px);
+  align-self: center;
+}
+
+.bar {
+  display: flex;
+  gap: 2px;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--tier-new);
+}
+
+.seg {
+  flex: 0 0 auto;
+  /* a tier with even one card should still be a visible sliver */
+  min-width: 4px;
+  transition: width .35s ease;
+}
+.seg-known { background: var(--tier-known); }
+.seg-young { background: var(--tier-young); }
+.seg-learning { background: var(--tier-learning); }
+.seg-new { background: var(--tier-new); }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 16px;
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  font-size: .76rem;
+  color: var(--ink-faint);
+}
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot-known { background: var(--tier-known); }
+.dot-young { background: var(--tier-young); }
+.dot-learning { background: var(--tier-learning); }
+.dot-new { background: var(--tier-new); box-shadow: inset 0 0 0 1px var(--line); }
 
 /* -------------------------------------------------------------- settings */
 
@@ -338,5 +412,6 @@ legend {
   .stats { gap: 12px; }
   .stats dt { font-size: .58rem; letter-spacing: .04em; }
   .stats dd { font-size: 1rem; }
-  .grades { grid-template-columns: repeat(2, 1fr); }
+  .grade { padding: 13px 4px; }
+  .grade b { font-size: .84rem; }
 }

@@ -48,11 +48,34 @@ Then open <http://localhost:8000>. Any static file server works.
 
 ## Using it
 
-- **Space** reveals the answer, **1**–**4** grade it, **S** opens settings.
-- **Again / Hard / Good / Easy** — each button shows when the card will next
-  come back. *Again* returns it a few cards later, in the same session.
+- **Space** reveals the answer, **1**–**3** grade it, **S** opens settings.
+- Three buttons, coloured so they can be hit without reading. Each shows when
+  the card will next come back:
+
+| | | |
+|---|---|---|
+| **Again** | red | Got it wrong. Returns a few cards later, in the same session. |
+| **Got it** | green | Right. Spaces the card out further each time. |
+| **Too easy** | blue | Right, and you would rather not see it again — jumps straight to the longest interval there is, a year. |
+
+  *Too easy* retires a card rather than deleting it: if it ever comes round
+  again and you miss it, it is relearnt like any other.
 - **Show the full table** prints the whole six-person paradigm, which is
   usually the fastest way to fix a form you keep missing.
+- The **bar along the bottom** breaks the whole selected deck down by how well
+  established each card is, so you can see the deck moving over weeks rather
+  than only the current session:
+
+| | |
+|---|---|
+| **Known** | next review 21 days out or more — Anki's threshold for a mature card |
+| **Young** | 1 to 20 days: learnt, not yet settled |
+| **Learning** | never spaced, or answered *Again* and back to zero |
+| **New** | not yet seen |
+
+  A card you answer *Again* drops back to Learning even after many reviews,
+  which is the point: the bar should show a verb you have started forgetting,
+  not the fact that you once knew it.
 
 In **Settings** you can choose:
 

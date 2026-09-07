@@ -3,7 +3,9 @@ import {
   conjugate, answerFor, attachPronoun,
   TENSES, TENSE_IDS, PRONOUN_LABELS, PRONOUNS, tenseLabel,
 } from './conjugator.js';
-import { GRADES, newCardState, review, isDue, formatDue, previewInterval } from './scheduler.js';
+import {
+  GRADES, TIERS, newCardState, review, isDue, formatDue, previewInterval, tierOf,
+} from './scheduler.js';
 import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
@@ -258,12 +260,14 @@ function renderResult(verdict) {
 function renderGrades(verdict) {
   const box = $('grades');
   const state = progress[queue[0]] ?? newCardState();
-  const suggested = { correct: 2, close: 1, wrong: 0 }[verdict] ?? null;
+  // An accent slip is still the wrong form, so it suggests Again rather than
+  // waving it through.
+  const suggested = { correct: 1, close: 0, wrong: 0 }[verdict] ?? null;
 
   box.innerHTML = '';
   for (const grade of GRADES) {
     const button = document.createElement('button');
-    button.className = `grade${grade.id === suggested ? ' suggested' : ''}`;
+    button.className = `grade grade-${grade.tone}${grade.id === suggested ? ' suggested' : ''}`;
     button.type = 'button';
     button.innerHTML = '<b></b><span></span>';
     button.querySelector('b').textContent = grade.label;
@@ -287,10 +291,53 @@ function renderParadigm() {
   });
 }
 
+// ---------------------------------------------------------- progress bar
+
+const segments = {};
+const legendCounts = {};
+
+function buildProgressBar() {
+  for (const tier of TIERS) {
+    const seg = document.createElement('span');
+    seg.className = `seg seg-${tier.id}`;
+    $('bar').append(seg);
+    segments[tier.id] = seg;
+
+    const item = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = `dot dot-${tier.id}`;
+    const label = document.createElement('span');
+    label.textContent = tier.label;
+    const count = document.createElement('b');
+    item.append(dot, label, count);
+    $('legend').append(item);
+    legendCounts[tier.id] = count;
+  }
+}
+
+function updateProgressBar() {
+  const counts = Object.fromEntries(TIERS.map((t) => [t.id, 0]));
+  for (const id of pool()) counts[tierOf(progress[id])] += 1;
+  const total = TIERS.reduce((sum, t) => sum + counts[t.id], 0);
+
+  $('progress').hidden = total === 0;
+  for (const tier of TIERS) {
+    const count = counts[tier.id];
+    segments[tier.id].hidden = count === 0;
+    segments[tier.id].style.width = `${(count / total) * 100}%`;
+    legendCounts[tier.id].textContent = count;
+  }
+  $('bar').setAttribute(
+    'aria-label',
+    `Deck progress: ${TIERS.map((t) => `${counts[t.id]} ${t.label.toLowerCase()}`).join(', ')}`,
+  );
+}
+
 function updateStats() {
   $('stat-seen').textContent = session.seen;
   $('stat-correct').textContent = session.seen ? `${session.correct}/${session.seen}` : '0';
   $('stat-due').textContent = remaining();
+  updateProgressBar();
 }
 
 // ----------------------------------------------------------------- actions
@@ -304,7 +351,7 @@ function grade_(gradeId) {
   // In typing mode the answer itself says whether you were right; in reveal
   // mode the only evidence is how you graded yourself.
   session.seen += 1;
-  if (lastVerdict ? lastVerdict === 'correct' : gradeId >= 2) session.correct += 1;
+  if (lastVerdict ? lastVerdict === 'correct' : gradeId >= 1) session.correct += 1;
 
   // "Again" means it should come back before the session ends, but not
   // immediately — a couple of cards of separation is enough to make it a
@@ -493,7 +540,7 @@ document.addEventListener('keydown', (event) => {
     return;
   }
 
-  if (answered && ['1', '2', '3', '4'].includes(event.key)) {
+  if (answered && ['1', '2', '3'].includes(event.key)) {
     event.preventDefault();
     grade_(Number(event.key) - 1);
     return;
@@ -502,17 +549,21 @@ document.addEventListener('keydown', (event) => {
   // Enter accepts the suggested grade, so a correct typed answer is two keys.
   if (answered && event.key === 'Enter') {
     event.preventDefault();
-    grade_({ correct: 2, close: 1, wrong: 0 }[lastVerdict] ?? 2);
+    grade_({ correct: 1, close: 0, wrong: 0 }[lastVerdict] ?? 1);
     return;
   }
 
-  if (!answered && (event.key === ' ' || (event.key === 'Enter' && !typing))) {
+  // Space only reveals when you are not typing into the answer box — a
+  // compound tense like "ai parlé" has a space in it, and swallowing that
+  // would make the form unanswerable. While typing, Enter submits the form.
+  if (!answered && !typing && (event.key === ' ' || event.key === 'Enter')) {
     event.preventDefault();
     reveal();
   }
 });
 
 buildAccentBar();
+buildProgressBar();
 renderSettings();
 renderCard();
 

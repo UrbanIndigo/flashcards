@@ -6,10 +6,9 @@
 const DAY = 24 * 60 * 60 * 1000;
 
 export const GRADES = [
-  { id: 0, label: 'Again', key: '1', hint: 'No idea' },
-  { id: 1, label: 'Hard', key: '2', hint: 'Struggled' },
-  { id: 2, label: 'Good', key: '3', hint: 'Got it' },
-  { id: 3, label: 'Easy', key: '4', hint: 'Instant' },
+  { id: 0, tone: 'again', label: 'Again', key: '1', hint: 'Got it wrong — come back to it shortly' },
+  { id: 1, tone: 'good', label: 'Got it', key: '2', hint: 'Right — space it out a bit further' },
+  { id: 2, tone: 'easy', label: 'Too easy', key: '3', hint: 'Right, and I would rather not see it again' },
 ];
 
 const MIN_EASE = 1.3;
@@ -37,15 +36,15 @@ export function review(state = newCardState(), grade, now = Date.now()) {
       next.interval = 0;
       break;
     case 1:
-      next.ease = clamp(next.ease - 0.15, MIN_EASE, MAX_EASE);
-      next.interval = first ? 1 : Math.max(1, next.interval * 1.2);
-      break;
-    case 2:
       next.interval = first ? 1 : Math.max(1, next.interval * next.ease);
       break;
-    case 3:
+    case 2:
+      // "I would rather not see it again": pushed straight to the longest
+      // interval there is, so it drops out of the rotation without being
+      // deleted — if it ever comes back and you miss it, it is relearnt
+      // like anything else.
       next.ease = clamp(next.ease + 0.15, MIN_EASE, MAX_EASE);
-      next.interval = first ? 3 : Math.max(1, next.interval * next.ease * 1.3);
+      next.interval = MAX_INTERVAL;
       break;
     default:
       throw new Error(`Unknown grade: ${grade}`);
@@ -73,8 +72,34 @@ export function formatDue(timestamp, now = Date.now()) {
 
 /** A one-line description of what a grade will do, for the buttons. */
 export function previewInterval(state, grade, now = Date.now()) {
-  const next = review(state, grade, now);
-  if (next.interval === 0) return 'soon';
-  if (next.interval < 1) return '<1d';
-  return `${Math.round(next.interval)}d`;
+  const days = review(state, grade, now).interval;
+  if (days === 0) return 'soon';
+  if (days < 1) return '<1d';
+  if (days < 30) return `${Math.round(days)}d`;
+  if (days < 365) return `${Math.round(days / 30)}mo`;
+  return '1y';
+}
+
+/** Cards mature at three weeks, the same threshold Anki uses. */
+export const MATURE_DAYS = 21;
+
+export const TIERS = [
+  { id: 'known', label: 'Known' },
+  { id: 'young', label: 'Young' },
+  { id: 'learning', label: 'Learning' },
+  { id: 'new', label: 'New' },
+];
+
+/**
+ * Which band of the progress bar a card falls in.
+ *
+ * A card drops back to 'learning' the moment you answer Again, since its
+ * interval is reset to zero — which is the point: the bar should show a verb
+ * you have started forgetting, not the fact that you once knew it.
+ */
+export function tierOf(state) {
+  if (!state || state.reps === 0) return 'new';
+  if (state.interval >= MATURE_DAYS) return 'known';
+  if (state.interval >= 1) return 'young';
+  return 'learning';
 }
