@@ -794,8 +794,44 @@ renderCard();
 
 // Offline support. Registration is best-effort: the app works without it,
 // and it cannot be registered from file:// anyway.
+//
+// A new build installs alongside the running one and waits, so the page you
+// are looking at keeps a consistent set of files. When it is ready, the
+// reader is offered the swap rather than having it happen underfoot.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+  let reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return;
+    reloading = true;
+    location.reload();
+  });
+
+  const offer = (worker) => {
+    const button = $('update');
+    button.hidden = false;
+    button.onclick = () => {
+      button.disabled = true;
+      button.textContent = 'Updating…';
+      worker.postMessage('skip-waiting');
+    };
+  };
+
+  window.addEventListener('load', async () => {
+    try {
+      const registration = await navigator.serviceWorker.register('sw.js');
+      if (registration.waiting && navigator.serviceWorker.controller) offer(registration.waiting);
+      registration.addEventListener('updatefound', () => {
+        const installing = registration.installing;
+        installing?.addEventListener('statechange', () => {
+          // A first install has no controller and is simply the app going
+          // offline-capable; there is nothing to refresh into.
+          if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+            offer(installing);
+          }
+        });
+      });
+    } catch {
+      /* no offline support this time; the app still runs */
+    }
   });
 }

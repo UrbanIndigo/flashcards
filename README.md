@@ -30,8 +30,21 @@ Then, on the phone, open that URL and:
 - **Android / Chrome** — ⋮ → *Install app* (or *Add to Home Screen*)
 
 It then launches full screen with its own icon, and works with no signal.
-Reopen it on wifi occasionally and any updates are picked up in the
-background.
+
+### Updates
+
+Each build is cached under its own name and served from that one cache, so
+every file in a page load comes from the same version. That is the point: an
+earlier design refreshed files independently, and a page could load a new
+`index.html` against a stale `app.js` and quietly lose half a feature.
+
+A new build installs alongside the running one and waits, leaving the page
+you are looking at intact. When it is ready a small **Update ready — tap to
+refresh** button appears; tapping it swaps versions and reloads. Nothing
+changes underfoot mid-review.
+
+The service worker is stamped with the commit SHA at deploy time, which is
+what makes a new build visible to an already-installed app.
 
 Progress is stored per browser and never leaves the device, so the phone and
 the laptop keep separate review schedules.
@@ -316,7 +329,7 @@ stem if that is irregular too:
 
 ```
 index.html              markup and PWA metadata
-sw.js                   offline caching
+sw.js                   offline caching and versioned updates
 manifest.webmanifest    home-screen install
 css/styles.css
 js/verbs.js             the dataset

@@ -39,6 +39,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # The service worker's cache is named for the build, so this is what
+      # makes a deploy visible to an installed app at all.
+      - name: Stamp the service worker with this commit
+        run: |
+          sed -i "s/__BUILD__/${GITHUB_SHA}/" sw.js
+          grep -q "__BUILD__" sw.js && { echo "sw.js was not stamped"; exit 1; } || true
+          grep -m1 "const VERSION" sw.js
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
