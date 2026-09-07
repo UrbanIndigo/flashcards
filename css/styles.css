@@ -308,6 +308,35 @@ button { font: inherit; }
 .empty h2 { font-family: var(--serif); font-size: 1.5rem; margin-bottom: 8px; }
 .empty p { color: var(--ink-soft); margin: 0 0 22px; }
 
+/* ---------------------------------------------------------------- recap */
+
+.recap { margin-top: 26px; border-top: 1px solid var(--line); padding-top: 20px; text-align: left; }
+
+.recap-stats {
+  margin: 0;
+  text-align: center;
+  font-size: .82rem;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+.recap-title {
+  margin: 22px 0 4px;
+  font-size: .7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--ink-faint);
+}
+
+.recap-list { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.recap-list td { padding: 8px 0; border-top: 1px solid var(--line); vertical-align: baseline; }
+.recap-list td:first-child { color: var(--ink-faint); font-size: .8rem; padding-right: 12px; }
+.recap-list td:last-child { font-family: var(--serif); text-align: right; white-space: nowrap; }
+.recap-list .times { color: var(--tier-learning); font-size: .72rem; }
+
+.recap-more { margin: 10px 0 0; font-size: .78rem; color: var(--ink-faint); text-align: center; }
+
 .hint { font-size: .76rem; color: var(--ink-faint); margin: 0; text-align: center; }
 kbd {
   font-family: var(--sans);
