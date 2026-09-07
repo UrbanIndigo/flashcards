@@ -4,7 +4,7 @@ import {
   TENSES, TENSE_IDS, PRONOUN_LABELS, PRONOUNS, tenseLabel,
 } from './conjugator.js';
 import {
-  GRADES, TIERS, newCardState, review, isDue, formatDue, previewInterval, tierOf,
+  GRADES, TIERS, newCardState, review, isDue, formatDue, tierOf,
 } from './scheduler.js';
 import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
 import {
@@ -296,7 +296,6 @@ function renderResult(verdict) {
 
 function renderGrades(verdict) {
   const box = $('grades');
-  const state = progress[queue[0]] ?? newCardState();
   // An accent slip is still the wrong form, so it suggests Again rather than
   // waving it through.
   const suggested = { correct: 1, close: 0, wrong: 0 }[verdict] ?? null;
@@ -306,9 +305,7 @@ function renderGrades(verdict) {
     const button = document.createElement('button');
     button.className = `grade grade-${grade.tone}${grade.id === suggested ? ' suggested' : ''}`;
     button.type = 'button';
-    button.innerHTML = '<b></b><span></span>';
-    button.querySelector('b').textContent = grade.label;
-    button.querySelector('span').textContent = previewInterval(state, grade.id);
+    button.textContent = grade.label;
     button.title = grade.hint;
     button.addEventListener('click', () => grade_(grade.id));
     box.append(button);

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  newCardState, review, isDue, formatDue, tierOf, previewInterval, GRADES, TIERS,
+  newCardState, review, isDue, formatDue, tierOf, GRADES, TIERS,
 } from '../js/scheduler.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -105,16 +105,6 @@ test('there are exactly three grades, and nothing else is accepted', () => {
   assert.deepEqual(GRADES.map((g) => g.tone), ['again', 'good', 'easy']);
   assert.throws(() => review(newCardState(), 3, NOW), /Unknown grade/);
   assert.throws(() => review(newCardState(), -1, NOW), /Unknown grade/);
-});
-
-test('button previews read in sensible units', () => {
-  assert.equal(previewInterval(newCardState(), 0, NOW), 'soon');
-  // A new card's first correct answer keeps it in the session.
-  assert.equal(previewInterval(newCardState(), 1, NOW), 'later');
-  assert.equal(previewInterval(review(newCardState(), 1, NOW), 1, NOW), '1d');
-  assert.equal(previewInterval(newCardState(), 2, NOW), '1y');
-  const settled = { interval: 20, ease: 2.5, reps: 4, lapses: 0, due: NOW };
-  assert.equal(previewInterval(settled, 1, NOW), '2mo');
 });
 
 test('an unseen card is due', () => {
