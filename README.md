@@ -53,6 +53,20 @@ Then open <http://localhost:8000>. Any static file server works.
   come back. *Again* returns it a few cards later, in the same session.
 - **Show the full table** prints the whole six-person paradigm, which is
   usually the fastest way to fix a form you keep missing.
+- The **bar along the bottom** breaks the whole selected deck down by how well
+  established each card is, so you can see the deck moving over weeks rather
+  than only the current session:
+
+| | |
+|---|---|
+| **Known** | next review 21 days out or more — Anki's threshold for a mature card |
+| **Young** | 1 to 20 days: learnt, not yet settled |
+| **Learning** | never spaced, or answered *Again* and back to zero |
+| **New** | not yet seen |
+
+  A card you answer *Again* drops back to Learning even after many reviews,
+  which is the point: the bar should show a verb you have started forgetting,
+  not the fact that you once knew it.
 
 In **Settings** you can choose:
 

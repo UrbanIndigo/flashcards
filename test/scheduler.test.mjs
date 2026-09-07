@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { newCardState, review, isDue, formatDue } from '../js/scheduler.js';
+import { newCardState, review, isDue, formatDue, tierOf, TIERS } from '../js/scheduler.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1_700_000_000_000;
@@ -64,4 +64,31 @@ test('due dates read naturally', () => {
   assert.equal(formatDue(NOW + DAY, NOW), 'tomorrow');
   assert.equal(formatDue(NOW + 5 * DAY, NOW), 'in 5 days');
   assert.equal(formatDue(NOW + 60 * DAY, NOW), 'in 2 months');
+});
+
+// ------------------------------------------------------------ progress bar
+
+test('cards are banded by how well established they are', () => {
+  assert.equal(tierOf(undefined), 'new');
+  assert.equal(tierOf(newCardState()), 'new');
+
+  // One Good puts a card a day out: started, but not established.
+  assert.equal(tierOf(review(newCardState(), 2, NOW)), 'young');
+
+  // Answering Again zeroes the interval, so it drops back to learning even
+  // though it has been reviewed several times.
+  let state = newCardState();
+  for (let i = 0; i < 6; i += 1) state = review(state, 2, NOW);
+  assert.equal(tierOf(state), 'known', `interval ${state.interval}`);
+  assert.equal(tierOf(review(state, 0, NOW)), 'learning');
+});
+
+test('the tiers are exhaustive and mutually exclusive', () => {
+  const ids = new Set(TIERS.map((t) => t.id));
+  assert.equal(ids.size, TIERS.length);
+  let state = newCardState();
+  for (let i = 0; i < 30; i += 1) {
+    state = review(state, i % 5 === 4 ? 0 : 2, NOW);
+    assert.ok(ids.has(tierOf(state)), `unbanded state: ${JSON.stringify(state)}`);
+  }
 });

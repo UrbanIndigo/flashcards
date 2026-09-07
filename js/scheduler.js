@@ -78,3 +78,27 @@ export function previewInterval(state, grade, now = Date.now()) {
   if (next.interval < 1) return '<1d';
   return `${Math.round(next.interval)}d`;
 }
+
+/** Cards mature at three weeks, the same threshold Anki uses. */
+export const MATURE_DAYS = 21;
+
+export const TIERS = [
+  { id: 'known', label: 'Known' },
+  { id: 'young', label: 'Young' },
+  { id: 'learning', label: 'Learning' },
+  { id: 'new', label: 'New' },
+];
+
+/**
+ * Which band of the progress bar a card falls in.
+ *
+ * A card drops back to 'learning' the moment you answer Again, since its
+ * interval is reset to zero — which is the point: the bar should show a verb
+ * you have started forgetting, not the fact that you once knew it.
+ */
+export function tierOf(state) {
+  if (!state || state.reps === 0) return 'new';
+  if (state.interval >= MATURE_DAYS) return 'known';
+  if (state.interval >= 1) return 'young';
+  return 'learning';
+}

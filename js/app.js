@@ -3,7 +3,9 @@ import {
   conjugate, answerFor, attachPronoun,
   TENSES, TENSE_IDS, PRONOUN_LABELS, PRONOUNS, tenseLabel,
 } from './conjugator.js';
-import { GRADES, newCardState, review, isDue, formatDue, previewInterval } from './scheduler.js';
+import {
+  GRADES, TIERS, newCardState, review, isDue, formatDue, previewInterval, tierOf,
+} from './scheduler.js';
 import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
@@ -287,10 +289,53 @@ function renderParadigm() {
   });
 }
 
+// ---------------------------------------------------------- progress bar
+
+const segments = {};
+const legendCounts = {};
+
+function buildProgressBar() {
+  for (const tier of TIERS) {
+    const seg = document.createElement('span');
+    seg.className = `seg seg-${tier.id}`;
+    $('bar').append(seg);
+    segments[tier.id] = seg;
+
+    const item = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = `dot dot-${tier.id}`;
+    const label = document.createElement('span');
+    label.textContent = tier.label;
+    const count = document.createElement('b');
+    item.append(dot, label, count);
+    $('legend').append(item);
+    legendCounts[tier.id] = count;
+  }
+}
+
+function updateProgressBar() {
+  const counts = Object.fromEntries(TIERS.map((t) => [t.id, 0]));
+  for (const id of pool()) counts[tierOf(progress[id])] += 1;
+  const total = TIERS.reduce((sum, t) => sum + counts[t.id], 0);
+
+  $('progress').hidden = total === 0;
+  for (const tier of TIERS) {
+    const count = counts[tier.id];
+    segments[tier.id].hidden = count === 0;
+    segments[tier.id].style.width = `${(count / total) * 100}%`;
+    legendCounts[tier.id].textContent = count;
+  }
+  $('bar').setAttribute(
+    'aria-label',
+    `Deck progress: ${TIERS.map((t) => `${counts[t.id]} ${t.label.toLowerCase()}`).join(', ')}`,
+  );
+}
+
 function updateStats() {
   $('stat-seen').textContent = session.seen;
   $('stat-correct').textContent = session.seen ? `${session.correct}/${session.seen}` : '0';
   $('stat-due').textContent = remaining();
+  updateProgressBar();
 }
 
 // ----------------------------------------------------------------- actions
@@ -513,6 +558,7 @@ document.addEventListener('keydown', (event) => {
 });
 
 buildAccentBar();
+buildProgressBar();
 renderSettings();
 renderCard();
 
