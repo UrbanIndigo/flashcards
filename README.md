@@ -116,8 +116,10 @@ done, you get a finish line rather than another twenty:
 > 20 new cards done, and 312 still waiting in this deck.
 > [Add 5] [Add 10] [Add 20]
 
-Adding more only extends *today*; tomorrow returns to the configured goal, so
-one enthusiastic evening does not silently raise the bar. A card counts
+The two study modes count separately, so an afternoon of reading does not eat
+the conjugation allowance. Adding more only extends *today*; tomorrow returns
+to the configured goal, so one enthusiastic evening does not silently raise
+the bar. A card counts
 against the allowance the first time you answer it, not when it is queued, so
 quitting halfway does not burn cards you never saw. The **New today** counter
 in the header shows where you are.
@@ -134,8 +136,8 @@ language:
 | **Subjonctif imparfait** | *qu'il fût, qu'elle eût* — where modern French would use the present subjunctive |
 
 Turn both on in Settings, set **Direction** to *Name the verb and tense*, and
-you get a reading drill: the card shows **il but** and you answer *boire,
-passé simple* — "he drank". That is the exact skill a novel asks for, since when
+even the plain drills become reading practice: the card shows **il but** and
+you answer *boire, passé simple* — "he drank". That is the exact skill a novel asks for, since when
 reading you never have to produce these forms, only recognise them.
 
 The passé simple has three families of endings (`-ai`, `-is`, `-us`) plus
@@ -146,8 +148,9 @@ knowing one gives you the other.
 
 ### Reading real sentences
 
-Set **Direction** to *In a sentence* and the card shows a line from a novel
-with one verb highlighted:
+Reading is its own mode, not a variation on the drills — set **Study** to
+*Reading* in Settings and the card shows a line from a novel with one verb
+highlighted:
 
 > Bientôt elle lui avoua qu'elle partageait son amour, quoiqu'il **dût**,
 > prévoyait-elle, leur causer de violents chagrins.
@@ -208,11 +211,12 @@ In **Settings** you can choose:
 
 | | |
 |---|---|
+| **Study** | Conjugation drills, or reading sentences |
 | **Deck** | Core verbs, irregulars, regulars, être verbs, or all 88 |
 | **New cards a day** | 5, 10, 20 or 40 |
 | **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent, and the two literary tenses below |
-| **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up |
-| **Direction** | Give the form, name the verb and tense, or mix the two |
+| **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up (conjugation only) |
+| **Direction** | Give the form, name the verb and tense, or mix the two (conjugation only) |
 | **How to answer** | Reveal from memory, or type the answer and have it checked |
 
 ### Both directions

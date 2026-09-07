@@ -16,7 +16,10 @@ import { SENTENCES, WORKS } from './sentences.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 const PROGRESS_KEY = 'conjugaison.progress.v1';
-const DAILY_KEY = 'conjugaison.daily.v1';
+const DAILY_KEYS = {
+  conjugation: 'conjugaison.daily.v1',
+  reading: 'conjugaison.daily.reading.v1',
+};
 const LOG_KEY = 'conjugaison.log.v1';
 
 const $ = (id) => document.getElementById(id);
@@ -25,16 +28,21 @@ const DEFAULT_SETTINGS = {
   deck: 'core',
   tenses: ['present', 'passe-compose', 'futur'],
   pronouns: [0, 1, 2, 3, 4, 5],
+  study: 'conjugation',  // 'conjugation' | 'reading'
   direction: 'produce', // 'produce' | 'recognise' | 'mix'
   mode: 'reveal',       // 'reveal' | 'type'
   dailyNew: DEFAULT_DAILY_NEW,
 };
 
+const STUDY = [
+  ['conjugation', 'Conjugation', 'Drill the forms'],
+  ['reading', 'Reading', 'Sentences from novels'],
+];
+
 const DIRECTIONS = [
   ['produce', 'Give the form', 'parler → je parle'],
   ['recognise', 'Name the verb and tense', "j'étais → être, imparfait"],
-  ['reading', 'In a sentence', 'Dumas, Hugo, Sue'],
-  ['mix', 'Mix both', 'alternates between the first two'],
+  ['mix', 'Mix both', 'alternates between the two'],
 ];
 
 // ---------------------------------------------------------------- storage
@@ -58,7 +66,12 @@ function save(key, value) {
 
 let settings = load(SETTINGS_KEY, DEFAULT_SETTINGS);
 let progress = load(PROGRESS_KEY, {});
-let daily = rollOver(load(DAILY_KEY, {}), todayKey(), settings.dailyNew);
+let daily;
+const loadDaily = () => {
+  daily = rollOver(load(DAILY_KEYS[settings.study], {}), todayKey(), settings.dailyNew);
+};
+const saveDaily = () => save(DAILY_KEYS[settings.study], daily);
+loadDaily();
 let log = rollLog(load(LOG_KEY, {}), todayKey());
 
 // Guard against a stored deck or tense that no longer exists.
@@ -69,6 +82,7 @@ settings.pronouns = settings.pronouns.filter((p) => p >= 0 && p < 6);
 if (!settings.pronouns.length) settings.pronouns = [...DEFAULT_SETTINGS.pronouns];
 if (!DIRECTIONS.some(([id]) => id === settings.direction)) settings.direction = DEFAULT_SETTINGS.direction;
 if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTINGS.dailyNew;
+if (!STUDY.some(([id]) => id === settings.study)) settings.study = DEFAULT_SETTINGS.study;
 
 // ------------------------------------------------------------------ cards
 
@@ -107,7 +121,7 @@ function directions() {
 
 function pool() {
   const ids = [];
-  if (settings.direction === 'reading') {
+  if (settings.study === 'reading') {
     // Sentence cards are not verb x tense x pronoun combinations, so the
     // pronoun filter has nothing to say about them; deck and tense still do.
     const inDeck = new Set(verbsForDeck(settings.deck).map((v) => v.inf));
@@ -499,7 +513,7 @@ function grade_(gradeId) {
   // when it is queued — quitting early does not spend cards you never saw.
   if (!progress[id]) {
     daily.introduced += 1;
-    save(DAILY_KEY, daily);
+    saveDaily();
   }
   progress[id] = review(progress[id] ?? newCardState(), gradeId);
   save(PROGRESS_KEY, progress);
@@ -561,6 +575,22 @@ function toggleIn(list, value, on) {
 }
 
 function renderSettings() {
+  const studies = $('study-options');
+  studies.innerHTML = '';
+  for (const [id, label, hint] of STUDY) {
+    studies.append(option({
+      type: 'radio', name: 'study', label, hint,
+      checked: settings.study === id,
+      onChange: (on) => { if (on) { settings.study = id; commitSettings(); } },
+    }));
+  }
+
+  // Direction and pronouns describe conjugation cards; a sentence has
+  // already chosen both for you.
+  const reading = settings.study === 'reading';
+  $('direction-group').hidden = reading;
+  $('pronoun-group').hidden = reading;
+
   const decks = $('deck-options');
   decks.innerHTML = '';
   for (const deck of DECKS) {
@@ -603,7 +633,7 @@ function renderSettings() {
         settings.dailyNew = goal;
         // Apply it to today as well, rather than only from tomorrow.
         daily.allowance = goal;
-        save(DAILY_KEY, daily);
+        saveDaily();
         commitSettings();
       },
     }));
@@ -640,6 +670,7 @@ function renderSettings() {
 
 function commitSettings() {
   save(SETTINGS_KEY, settings);
+  loadDaily();
   forceStudy = false;
   queue = [];
   renderSettings();
@@ -688,7 +719,7 @@ $('table-toggle').addEventListener('click', () => {
 for (const button of document.querySelectorAll('.add')) {
   button.addEventListener('click', () => {
     daily.allowance += Number(button.dataset.add);
-    save(DAILY_KEY, daily);
+    saveDaily();
     forceStudy = false;
     queue = buildQueue();
     renderCard();
@@ -709,8 +740,8 @@ $('reset').addEventListener('click', () => {
   if (!confirm('Delete your review history and start over?')) return;
   progress = {};
   save(PROGRESS_KEY, progress);
-  daily = rollOver(null, todayKey(), settings.dailyNew);
-  save(DAILY_KEY, daily);
+  for (const key of Object.values(DAILY_KEYS)) save(key, rollOver(null, todayKey(), settings.dailyNew));
+  loadDaily();
   log = rollLog(null, todayKey());
   save(LOG_KEY, log);
   session.seen = 0;
