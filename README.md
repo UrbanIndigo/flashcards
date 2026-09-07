@@ -144,6 +144,10 @@ out that a `-u` participle usually predicts the `-us` stem: *couru → courus*,
 *bu → but*. The imperfect subjunctive is built off the passé simple, so
 knowing one gives you the other.
 
+Sentences from actual novels are not included. Doing that properly means
+parsing real public-domain texts rather than quoting from memory, and
+inventing lines to attribute to Dumas would be worse than useless.
+
 ### The recap
 
 The finish screen ends with the day's recap:
@@ -268,6 +272,9 @@ js/app.js               cards, session queue, settings
 
 ## Not covered
 
-The impératif, the passé simple, and reflexive verbs (*se lever*) are out of
-scope. Verbs that take either auxiliary depending on meaning (*passer*,
-*sortir* used transitively) are listed with only their common one.
+The impératif and reflexive verbs (*se lever*) are out of scope. Verbs that
+take either auxiliary depending on meaning (*passer*, *sortir* used
+transitively) are listed with only their common one.
+
+Reading practice is on isolated forms, not sentences from real books — see
+the note in **Reading novels** above.
