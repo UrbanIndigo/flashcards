@@ -1,0 +1,11 @@
+{
+  "name": "conjugaison",
+  "version": "1.0.0",
+  "description": "Flashcards for French verb conjugations",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "test": "node --test test/*.test.mjs"
+  }
+}

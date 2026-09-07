@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f7f6f3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16171b" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Spaced-repetition flashcards for French verb conjugations.">
+<title>Conjugaison — French verb flashcards</title>
+<link rel="stylesheet" href="css/styles.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<!-- iOS ignores the manifest for Add to Home Screen and uses these instead. -->
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Conjugaison">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <h1>Conjugaison</h1>
+    <p class="tagline">French verb flashcards</p>
+  </div>
+  <div class="topbar-right">
+    <dl class="stats" aria-label="Session progress">
+      <div><dt>Reviewed</dt><dd id="stat-seen">0</dd></div>
+      <div><dt>Correct</dt><dd id="stat-correct">0</dd></div>
+      <div><dt>Left</dt><dd id="stat-due">0</dd></div>
+    </dl>
+    <button id="settings-toggle" class="icon-button" aria-expanded="false" aria-controls="settings">
+      Settings
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- The card -->
+  <section id="card" class="card" hidden>
+    <div class="card-head">
+      <span class="pill" id="card-tense">Présent</span>
+      <span class="card-gloss" id="card-gloss">to speak</span>
+    </div>
+
+    <div class="prompt">
+      <p class="prompt-lead" id="prompt-lead">What is the <strong id="prompt-tense">présent</strong> of</p>
+      <p class="prompt-verb">
+        <span id="prompt-pronoun">je</span><span id="prompt-sep"> · </span><span id="prompt-inf">parler</span>
+      </p>
+    </div>
+
+    <!-- Typing mode -->
+    <form id="answer-form" class="answer-form" hidden autocomplete="off">
+      <input id="answer-input" type="text" inputmode="text" autocapitalize="off"
+             autocorrect="off" spellcheck="false" placeholder="type the form…"
+             aria-label="Your answer">
+      <div class="accents" id="accents" aria-label="Accented characters"></div>
+      <button type="submit" class="primary">Check</button>
+    </form>
+
+    <!-- Reveal mode -->
+    <button id="reveal" class="reveal primary">Show answer</button>
+
+    <div id="result" class="result" hidden>
+      <p id="verdict" class="verdict"></p>
+      <p class="answer" id="answer">je parle</p>
+      <p class="answer-sub" id="answer-sub" hidden></p>
+      <p class="answer-note" id="answer-note" hidden></p>
+      <button id="table-toggle" class="link-button" aria-expanded="false">Show the full table</button>
+      <table id="paradigm" class="paradigm" hidden></table>
+    </div>
+
+    <div id="grades" class="grades" hidden role="group" aria-label="How well did you know it?"></div>
+  </section>
+
+  <!-- Shown when there is nothing left to review -->
+  <section id="empty" class="card empty" hidden>
+    <h2 id="empty-title">All caught up</h2>
+    <p id="empty-body">You have reviewed everything that is due.</p>
+    <button id="study-anyway" class="primary">Keep practising anyway</button>
+  </section>
+
+  <p class="hint">
+    <kbd>Space</kbd> reveal · <kbd>1</kbd>–<kbd>4</kbd> grade · <kbd>S</kbd> settings
+  </p>
+</main>
+
+<!-- Settings -->
+<aside id="settings" class="settings" hidden>
+  <div class="settings-inner">
+    <div class="settings-head">
+      <h2>Settings</h2>
+      <button id="settings-close" class="icon-button">Done</button>
+    </div>
+
+    <fieldset>
+      <legend>Deck</legend>
+      <div id="deck-options" class="options"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Tenses</legend>
+      <div id="tense-options" class="options"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Pronouns</legend>
+      <div id="pronoun-options" class="options pronouns"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Direction</legend>
+      <div id="direction-options" class="options"></div>
+    </fieldset>
+
+    <fieldset>
+      <legend>How to answer</legend>
+      <div id="mode-options" class="options"></div>
+    </fieldset>
+
+    <div class="danger">
+      <p id="progress-summary">No progress saved yet.</p>
+      <button id="reset" class="ghost">Reset all progress</button>
+    </div>
+  </div>
+</aside>
+
+<div id="settings-backdrop" class="backdrop" hidden></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
