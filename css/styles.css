@@ -227,6 +227,8 @@ button { font: inherit; }
   letter-spacing: -.02em;
 }
 
+.answer-sub { margin: 10px 0 0; font-size: .85rem; color: var(--ink-soft); }
+
 .answer-note { margin: 8px 0 0; font-size: .82rem; color: var(--ink-faint); }
 .answer-note s { color: var(--bad); text-decoration-thickness: 1px; }
 

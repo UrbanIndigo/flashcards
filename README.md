@@ -7,10 +7,36 @@ Flashcards for French verb conjugations. A card asks you for one form —
 — you recall it, reveal the answer, and say how well you knew it. Cards you
 miss come back sooner than cards you know.
 
-No build step, no dependencies, no accounts: it is plain HTML, CSS and ES
-modules, and your progress lives in the browser's `localStorage`.
+It installs to a phone home screen and works with no internet. No build step,
+no dependencies, no accounts: plain HTML, CSS and ES modules, with your
+progress in the browser's `localStorage`.
 
-## Running it
+## On your phone, offline
+
+The app is a PWA: once it has loaded, a service worker keeps the whole thing
+cached, so it runs on the Tube, on a plane, or in a field.
+
+Installing needs HTTPS — a laptop serving on the local network will not
+register a service worker — so publish it to GitHub Pages:
+
+1. Merge this branch to `main`.
+2. **Settings → Pages → Source: GitHub Actions**, once.
+3. Push. `.github/workflows/ci.yml` runs the tests and deploys, and Pages
+   gives you a URL like `https://<user>.github.io/flashcards/`.
+
+Then, on the phone, open that URL and:
+
+- **iOS / Safari** — Share → *Add to Home Screen*
+- **Android / Chrome** — ⋮ → *Install app* (or *Add to Home Screen*)
+
+It then launches full screen with its own icon, and works with no signal.
+Reopen it on wifi occasionally and any updates are picked up in the
+background.
+
+Progress is stored per browser and never leaves the device, so the phone and
+the laptop keep separate review schedules.
+
+## Running it locally
 
 ES modules need to be served over HTTP rather than opened from disk:
 
@@ -18,8 +44,7 @@ ES modules need to be served over HTTP rather than opened from disk:
 npm start          # python3 -m http.server 8000
 ```
 
-Then open <http://localhost:8000>. Any static file server works, and the
-directory can be published to GitHub Pages as-is.
+Then open <http://localhost:8000>. Any static file server works.
 
 ## Using it
 
@@ -36,7 +61,23 @@ In **Settings** you can choose:
 | **Deck** | Core verbs, irregulars, regulars, être verbs, or all 88 |
 | **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent |
 | **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up |
-| **How to answer** | Reveal from memory, or type the form and have it checked |
+| **Direction** | Give the form, name the verb, or mix the two |
+| **How to answer** | Reveal from memory, or type the answer and have it checked |
+
+### Both directions
+
+The default cards go *parler* → **je parle**. Reverse cards go the other way:
+they show **j'étais** and ask which verb it is, revealing `être · imparfait ·
+to be`. That is the harder and more useful direction, because it is what
+reading French actually asks of you.
+
+Reverse cards show only the form — naming the tense would give half of it
+away — and they accept any verb that genuinely fits: *je suis* is both *être*
+and *suivre*, and either answer is marked correct, with the other named on
+the answer side.
+
+The two directions are scheduled separately, so knowing *parler → je parle*
+does not claim you can also read it backwards.
 
 Typing mode accepts either the bare form (`ai parlé`) or the whole clause
 (`j'ai parlé`), ignores case and stray punctuation, and tells you when the
@@ -96,6 +137,20 @@ stem if that is irregular too:
 ```
 
 `npm test` will tell you if the entry is malformed or produces an empty form.
+
+## Layout
+
+```
+index.html              markup and PWA metadata
+sw.js                   offline caching
+manifest.webmanifest    home-screen install
+css/styles.css
+js/verbs.js             the dataset
+js/conjugator.js        derives every tense from it
+js/scheduler.js         review intervals
+js/answer.js            typed-answer matching, both directions
+js/app.js               cards, session queue, settings
+```
 
 ## Not covered
 

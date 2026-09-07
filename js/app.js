@@ -4,7 +4,7 @@ import {
   TENSES, TENSE_IDS, PRONOUN_LABELS, PRONOUNS, tenseLabel,
 } from './conjugator.js';
 import { GRADES, newCardState, review, isDue, formatDue, previewInterval } from './scheduler.js';
-import { checkAnswer } from './answer.js';
+import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 const PROGRESS_KEY = 'conjugaison.progress.v1';
@@ -16,8 +16,15 @@ const DEFAULT_SETTINGS = {
   deck: 'core',
   tenses: ['present', 'passe-compose', 'futur'],
   pronouns: [0, 1, 2, 3, 4, 5],
-  mode: 'reveal', // 'reveal' | 'type'
+  direction: 'produce', // 'produce' | 'recognise' | 'mix'
+  mode: 'reveal',       // 'reveal' | 'type'
 };
+
+const DIRECTIONS = [
+  ['produce', 'Give the form', 'parler → je parle'],
+  ['recognise', 'Name the verb', "j'étais → être"],
+  ['mix', 'Mix both', 'alternates between the two'],
+];
 
 // ---------------------------------------------------------------- storage
 
@@ -47,21 +54,37 @@ settings.tenses = settings.tenses.filter((t) => TENSE_IDS.includes(t));
 if (!settings.tenses.length) settings.tenses = [...DEFAULT_SETTINGS.tenses];
 settings.pronouns = settings.pronouns.filter((p) => p >= 0 && p < 6);
 if (!settings.pronouns.length) settings.pronouns = [...DEFAULT_SETTINGS.pronouns];
+if (!DIRECTIONS.some(([id]) => id === settings.direction)) settings.direction = DEFAULT_SETTINGS.direction;
 
 // ------------------------------------------------------------------ cards
 
-const cardId = (inf, tense, person) => `${inf}|${tense}|${person}`;
+// A forward card keeps its three-part id, so review history recorded before
+// reverse cards existed still matches; reverse cards get a "|r" suffix and
+// are scheduled independently.
+const cardId = (inf, tense, person, direction) =>
+  `${inf}|${tense}|${person}${direction === 'recognise' ? '|r' : ''}`;
 
 function parseCard(id) {
-  const [inf, tense, person] = id.split('|');
-  return { verb: VERBS.find((v) => v.inf === inf), tense, person: Number(person) };
+  const [inf, tense, person, reverse] = id.split('|');
+  return {
+    verb: VERBS.find((v) => v.inf === inf),
+    tense,
+    person: Number(person),
+    direction: reverse === 'r' ? 'recognise' : 'produce',
+  };
+}
+
+function directions() {
+  return settings.direction === 'mix' ? ['produce', 'recognise'] : [settings.direction];
 }
 
 function pool() {
   const ids = [];
   for (const verb of verbsForDeck(settings.deck)) {
     for (const tense of settings.tenses) {
-      for (const person of settings.pronouns) ids.push(cardId(verb.inf, tense, person));
+      for (const person of settings.pronouns) {
+        for (const direction of directions()) ids.push(cardId(verb.inf, tense, person, direction));
+      }
     }
   }
   return ids;
@@ -134,16 +157,39 @@ function renderCard() {
   lastVerdict = null;
   current = parseCard(queue[0]);
 
-  const { verb, tense, person } = current;
-  $('card-tense').textContent = tenseLabel(tense);
-  $('card-gloss').textContent = verb.en;
-  $('prompt-tense').textContent = tenseLabel(tense).toLowerCase();
-  $('prompt-pronoun').textContent = PRONOUN_LABELS[person];
-  $('prompt-inf').textContent = verb.inf;
+  const { verb, tense, person, direction } = current;
+  const reverse = direction === 'recognise';
+  const lead = $('prompt-lead');
+  lead.textContent = '';
+
+  if (reverse) {
+    // Naming the tense would give half the answer away, so a reverse card
+    // shows the bare form and nothing else.
+    $('card-tense').textContent = 'Which verb?';
+    $('card-gloss').hidden = true;
+    lead.textContent = 'Which verb is this?';
+    $('prompt-pronoun').hidden = true;
+    $('prompt-sep').hidden = true;
+    $('prompt-inf').textContent = answerFor(verb, tense, person);
+  } else {
+    $('card-tense').textContent = tenseLabel(tense);
+    $('card-gloss').hidden = false;
+    $('card-gloss').textContent = verb.en;
+    const strong = document.createElement('strong');
+    strong.id = 'prompt-tense';
+    strong.textContent = tenseLabel(tense).toLowerCase();
+    lead.append('What is the ', strong, ' of');
+    $('prompt-pronoun').hidden = false;
+    $('prompt-pronoun').textContent = PRONOUN_LABELS[person];
+    $('prompt-sep').hidden = false;
+    $('prompt-inf').textContent = verb.inf;
+  }
 
   const typing = settings.mode === 'type';
   $('answer-form').hidden = !typing;
   $('reveal').hidden = typing;
+  $('answer-input').placeholder = reverse ? 'infinitive…' : 'type the form…';
+  $('answer-sub').hidden = true;
   $('result').hidden = true;
   $('grades').hidden = true;
   $('paradigm').hidden = true;
@@ -173,7 +219,19 @@ function renderResult(verdict) {
     verdictEl.className = `verdict ${verdict}`;
   }
 
-  $('answer').textContent = answerFor(verb, tense, person);
+  const sub = $('answer-sub');
+  if (current.direction === 'recognise') {
+    $('answer').textContent = verb.inf;
+    // "je suis" is also suivre — say so rather than looking arbitrary.
+    const others = verbsMatching(answerFor(verb, tense, person), tense, person)
+      .filter((inf) => inf !== verb.inf);
+    sub.textContent = `${tenseLabel(tense)} · ${verb.en}`
+      + (others.length ? ` — also ${others.join(', ')}` : '');
+    sub.hidden = false;
+  } else {
+    $('answer').textContent = answerFor(verb, tense, person);
+    sub.hidden = true;
+  }
 
   const note = $('answer-note');
   const typed = $('answer-input').value.trim();
@@ -258,7 +316,9 @@ function grade_(gradeId) {
 
 function reveal() {
   if (answered) return;
-  renderResult(settings.mode === 'type' ? checkAnswer($('answer-input').value, current) : null);
+  if (settings.mode !== 'type') return renderResult(null);
+  const check = current.direction === 'recognise' ? checkRecognition : checkAnswer;
+  renderResult(check($('answer-input').value, current));
 }
 
 // ---------------------------------------------------------------- settings
@@ -321,6 +381,16 @@ function renderSettings() {
       onChange: (on) => { settings.pronouns = toggleIn(settings.pronouns, i, on); commitSettings(); },
     }));
   });
+
+  const dirs = $('direction-options');
+  dirs.innerHTML = '';
+  for (const [id, label, hint] of DIRECTIONS) {
+    dirs.append(option({
+      type: 'radio', name: 'direction', label, hint,
+      checked: settings.direction === id,
+      onChange: (on) => { if (on) { settings.direction = id; commitSettings(); } },
+    }));
+  }
 
   const modes = $('mode-options');
   modes.innerHTML = '';
@@ -445,3 +515,11 @@ document.addEventListener('keydown', (event) => {
 buildAccentBar();
 renderSettings();
 renderCard();
+
+// Offline support. Registration is best-effort: the app works without it,
+// and it cannot be registered from file:// anyway.
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
