@@ -133,9 +133,9 @@ language:
 | **Passé simple** | *il fut, il eut, il dit, il prit, ils regardèrent* — means exactly what the passé composé means, a finished action, but written rather than spoken |
 | **Subjonctif imparfait** | *qu'il fût, qu'elle eût* — where modern French would use the present subjunctive |
 
-Turn both on in Settings, set **Direction** to *Name the verb*, and you get a
-reading drill: the card shows **il but** and you answer *boire* — passé
-simple, "he drank". That is the exact skill a novel asks for, since when
+Turn both on in Settings, set **Direction** to *Name the verb and tense*, and
+you get a reading drill: the card shows **il but** and you answer *boire,
+passé simple* — "he drank". That is the exact skill a novel asks for, since when
 reading you never have to produce these forms, only recognise them.
 
 The passé simple has three families of endings (`-ai`, `-is`, `-us`) plus
@@ -176,7 +176,7 @@ In **Settings** you can choose:
 | **New cards a day** | 5, 10, 20 or 40 |
 | **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent, and the two literary tenses below |
 | **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up |
-| **Direction** | Give the form, name the verb, or mix the two |
+| **Direction** | Give the form, name the verb and tense, or mix the two |
 | **How to answer** | Reveal from memory, or type the answer and have it checked |
 
 ### Both directions
@@ -186,10 +186,29 @@ they show **j'étais** and ask which verb it is, revealing `être · imparfait �
 to be`. That is the harder and more useful direction, because it is what
 reading French actually asks of you.
 
-Reverse cards show only the form — naming the tense would give half of it
-away — and they accept any verb that genuinely fits: *je suis* is both *être*
-and *suivre*, and either answer is marked correct, with the other named on
-the answer side.
+Reverse cards ask for **both**, because that is what reading needs: knowing
+*il but* is *boire* does not help until you also see it is a passé simple.
+Type them in either order, in French or English — `boire passé simple`,
+`passe simple boire`, `boire past historic` all pass — and getting one half
+right says which half:
+
+| | |
+|---|---|
+| `être imparfait` | Correct |
+| `être` | Right verb — name the tense too |
+| `être futur` | Right verb — wrong tense |
+| `imparfait` | Right tense — wrong verb |
+
+They accept every reading that genuinely fits, because French forms collide
+constantly and a book gives you no more context than the card does:
+
+- *je suis* — être **or** suivre, both présent
+- *je finis* — finir, présent **or** passé simple
+- *il vit* — voir in the passé simple ("he saw") **or** vivre in the présent ("he lives")
+- *que je finisse* — both subjunctives at once
+
+The answer side names the other readings rather than hiding them, since the
+ambiguity is the thing worth knowing.
 
 The two directions are scheduled separately, so knowing *parler → je parle*
 does not claim you can also read it backwards.

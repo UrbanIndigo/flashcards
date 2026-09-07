@@ -6,7 +6,7 @@ import {
 import {
   GRADES, TIERS, newCardState, review, isDue, formatDue, tierOf,
 } from './scheduler.js';
-import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
+import { checkAnswer, checkRecognition, interpretationsOf } from './answer.js';
 import {
   DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached,
 } from './daily.js';
@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS = {
 
 const DIRECTIONS = [
   ['produce', 'Give the form', 'parler → je parle'],
-  ['recognise', 'Name the verb', "j'étais → être"],
+  ['recognise', 'Name the verb and tense', "j'étais → être, imparfait"],
   ['mix', 'Mix both', 'alternates between the two'],
 ];
 
@@ -179,9 +179,9 @@ function renderCard() {
   if (reverse) {
     // Naming the tense would give half the answer away, so a reverse card
     // shows the bare form and nothing else.
-    $('card-tense').textContent = 'Which verb?';
+    $('card-tense').textContent = 'Verb and tense?';
     $('card-gloss').hidden = true;
-    lead.textContent = 'Which verb is this?';
+    lead.textContent = 'Which verb is this, and which tense?';
     $('prompt-pronoun').hidden = true;
     $('prompt-sep').hidden = true;
     $('prompt-inf').textContent = answerFor(verb, tense, person);
@@ -202,7 +202,7 @@ function renderCard() {
   const typing = settings.mode === 'type';
   $('answer-form').hidden = !typing;
   $('reveal').hidden = typing;
-  $('answer-input').placeholder = reverse ? 'infinitive…' : 'type the form…';
+  $('answer-input').placeholder = reverse ? 'verb and tense…' : 'type the form…';
   $('answer-sub').hidden = true;
   $('result').hidden = true;
   $('grades').hidden = true;
@@ -309,16 +309,21 @@ function renderResult(verdict) {
     verdictEl.textContent = '';
     verdictEl.className = 'verdict';
   } else {
-    verdictEl.textContent = { correct: 'Correct', close: 'Almost — check the accents', wrong: 'Not quite' }[verdict];
-    verdictEl.className = `verdict ${verdict}`;
+    verdictEl.textContent = verdict.message;
+    verdictEl.className = `verdict ${verdict.level}`;
   }
 
   const sub = $('answer-sub');
   if (current.direction === 'recognise') {
     $('answer').textContent = verb.inf;
-    // "je suis" is also suivre — say so rather than looking arbitrary.
-    const others = verbsMatching(answerFor(verb, tense, person), tense, person)
-      .filter((inf) => inf !== verb.inf);
+    // "je suis" is also suivre; "je finis" is also a passé simple. Naming the
+    // other readings is the point, not a footnote — it is what makes a form
+    // ambiguous on the page of a book.
+    const others = interpretationsOf(answerFor(verb, tense, person), person)
+      .filter((o) => !(o.inf === verb.inf && o.tense === tense))
+      .map((o) => (o.inf === verb.inf
+        ? tenseLabel(o.tense).toLowerCase()
+        : `${o.inf} (${tenseLabel(o.tense).toLowerCase()})`));
     sub.textContent = `${tenseLabel(tense)} · ${verb.en}`
       + (others.length ? ` — also ${others.join(', ')}` : '');
     sub.hidden = false;
@@ -331,7 +336,7 @@ function renderResult(verdict) {
   const typed = $('answer-input').value.trim();
   // Seeing your own spelling next to the right one is the whole lesson when
   // the only thing you missed was an accent.
-  if (typed && (verdict === 'wrong' || verdict === 'close')) {
+  if (typed && verdict && verdict.level !== 'correct') {
     note.innerHTML = 'you wrote <s></s>';
     note.querySelector('s').textContent = typed;
     note.hidden = false;
@@ -356,7 +361,7 @@ function renderGrades(verdict) {
   const box = $('grades');
   // An accent slip is still the wrong form, so it suggests Again rather than
   // waving it through.
-  const suggested = { correct: 1, close: 0, wrong: 0 }[verdict] ?? null;
+  const suggested = { correct: 1, close: 0, wrong: 0 }[verdict?.level] ?? null;
 
   box.innerHTML = '';
   for (const grade of GRADES) {
@@ -452,7 +457,7 @@ function grade_(gradeId) {
   // In typing mode the answer itself says whether you were right; in reveal
   // mode the only evidence is how you graded yourself.
   session.seen += 1;
-  if (lastVerdict ? lastVerdict === 'correct' : gradeId >= 1) session.correct += 1;
+  if (lastVerdict ? lastVerdict.level === 'correct' : gradeId >= 1) session.correct += 1;
 
   // A card that has not graduated comes back before the session ends, far
   // enough down the queue to be a real recall attempt rather than an echo.
@@ -685,7 +690,7 @@ document.addEventListener('keydown', (event) => {
   // Enter accepts the suggested grade, so a correct typed answer is two keys.
   if (answered && event.key === 'Enter') {
     event.preventDefault();
-    grade_({ correct: 1, close: 0, wrong: 0 }[lastVerdict] ?? 1);
+    grade_({ correct: 1, close: 0, wrong: 0 }[lastVerdict?.level] ?? 1);
     return;
   }
 
