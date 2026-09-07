@@ -169,3 +169,83 @@ test('the dataset itself is well formed', () => {
     assert.equal(v.aux === 'être', v.tags.includes('etre'), `${v.inf}: aux and tag disagree`);
   }
 });
+
+// ------------------------------------------------------- literary tenses
+
+test('passé simple: the regular families', () => {
+  paradigm('parler', 'passe-simple', ['parlai', 'parlas', 'parla', 'parlâmes', 'parlâtes', 'parlèrent']);
+  paradigm('finir', 'passe-simple', ['finis', 'finis', 'finit', 'finîmes', 'finîtes', 'finirent']);
+  paradigm('vendre', 'passe-simple', ['vendis', 'vendis', 'vendit', 'vendîmes', 'vendîtes', 'vendirent']);
+});
+
+test('passé simple: softening still applies before the accented a', () => {
+  // -âmes and -âtes are still a-endings, so the e and the cedilla survive,
+  // but -èrent is not, so they do not.
+  paradigm('manger', 'passe-simple', ['mangeai', 'mangeas', 'mangea', 'mangeâmes', 'mangeâtes', 'mangèrent']);
+  paradigm('commencer', 'passe-simple', ['commençai', 'commenças', 'commença', 'commençâmes', 'commençâtes', 'commencèrent']);
+  // Stem-changing -er verbs use their plain stem here.
+  paradigm('acheter', 'passe-simple', ['achetai', 'achetas', 'acheta', 'achetâmes', 'achetâtes', 'achetèrent']);
+});
+
+test('passé simple: the irregular stems', () => {
+  paradigm('être', 'passe-simple', ['fus', 'fus', 'fut', 'fûmes', 'fûtes', 'furent']);
+  paradigm('avoir', 'passe-simple', ['eus', 'eus', 'eut', 'eûmes', 'eûtes', 'eurent']);
+  paradigm('faire', 'passe-simple', ['fis', 'fis', 'fit', 'fîmes', 'fîtes', 'firent']);
+  paradigm('voir', 'passe-simple', ['vis', 'vis', 'vit', 'vîmes', 'vîtes', 'virent']);
+  paradigm('naître', 'passe-simple', ['naquis', 'naquis', 'naquit', 'naquîmes', 'naquîtes', 'naquirent']);
+  paradigm('vivre', 'passe-simple', ['vécus', 'vécus', 'vécut', 'vécûmes', 'vécûtes', 'vécurent']);
+  // aller is irregular everywhere else but perfectly regular here.
+  paradigm('aller', 'passe-simple', ['allai', 'allas', 'alla', 'allâmes', 'allâtes', 'allèrent']);
+  // venir and tenir are the only -ins family.
+  paradigm('venir', 'passe-simple', ['vins', 'vins', 'vint', 'vînmes', 'vîntes', 'vinrent']);
+  paradigm('tenir', 'passe-simple', ['tins', 'tins', 'tint', 'tînmes', 'tîntes', 'tinrent']);
+});
+
+test('the forms a reader of Dumas actually meets', () => {
+  assert.equal(answerFor(verb('être'), 'passe-simple', 2), 'il fut');
+  assert.equal(answerFor(verb('avoir'), 'passe-simple', 2), 'il eut');
+  assert.equal(answerFor(verb('dire'), 'passe-simple', 2), 'il dit');
+  assert.equal(answerFor(verb('prendre'), 'passe-simple', 2), 'il prit');
+  assert.equal(answerFor(verb('répondre'), 'passe-simple', 2), 'il répondit');
+  assert.equal(answerFor(verb('sortir'), 'passe-simple', 5), 'ils sortirent');
+  assert.equal(answerFor(verb('regarder'), 'passe-simple', 5), 'ils regardèrent');
+});
+
+test('subjonctif imparfait is built off the passé simple', () => {
+  paradigm('parler', 'subjonctif-imparfait',
+    ['parlasse', 'parlasses', 'parlât', 'parlassions', 'parlassiez', 'parlassent']);
+  paradigm('finir', 'subjonctif-imparfait',
+    ['finisse', 'finisses', 'finît', 'finissions', 'finissiez', 'finissent']);
+  paradigm('être', 'subjonctif-imparfait',
+    ['fusse', 'fusses', 'fût', 'fussions', 'fussiez', 'fussent']);
+  paradigm('avoir', 'subjonctif-imparfait',
+    ['eusse', 'eusses', 'eût', 'eussions', 'eussiez', 'eussent']);
+  paradigm('venir', 'subjonctif-imparfait',
+    ['vinsse', 'vinsses', 'vînt', 'vinssions', 'vinssiez', 'vinssent']);
+  paradigm('manger', 'subjonctif-imparfait',
+    ['mangeasse', 'mangeasses', 'mangeât', 'mangeassions', 'mangeassiez', 'mangeassent']);
+});
+
+test('the circumflex lands on the last vowel of the stem', () => {
+  const il = (inf) => conjugate(verb(inf), 'subjonctif-imparfait')[2];
+  assert.equal(il('parler'), 'parlât');
+  assert.equal(il('finir'), 'finît');
+  assert.equal(il('être'), 'fût');
+  assert.equal(il('avoir'), 'eût');
+  assert.equal(il('venir'), 'vînt', 'the i, not the n');
+  assert.equal(il('recevoir'), 'reçût');
+  assert.equal(il('naître'), 'naquît');
+});
+
+test('both subjunctives are shown after que', () => {
+  assert.equal(answerFor(verb('être'), 'subjonctif-imparfait', 2), "qu'il fût");
+  assert.equal(answerFor(verb('parler'), 'subjonctif-imparfait', 0), 'que je parlasse');
+  assert.equal(answerFor(verb('avoir'), 'subjonctif-imparfait', 5), "qu'ils eussent");
+});
+
+test('every irregular verb carries a passé simple stem', () => {
+  for (const v of VERBS) {
+    if (v.group === 'irr') assert.ok(v.ps?.stem !== undefined, `${v.inf} has no passé simple stem`);
+    if (v.ps) assert.ok(['a', 'i', 'u', 'in'].includes(v.ps.type), `${v.inf}: bad family ${v.ps.type}`);
+  }
+});
