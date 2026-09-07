@@ -1,14 +1,20 @@
 /**
  * Offline support.
  *
- * Everything here is static, so the whole app is precached on install and
- * then served cache-first — once you have opened it on the plane, it keeps
- * working. Each cached response is refreshed in the background afterwards
- * (stale-while-revalidate), so edits reach the phone on the next load
- * without anyone having to remember to bump a version number.
+ * The whole app is precached under a cache named for the build, and served
+ * from that one cache. That matters more than it sounds: the previous
+ * version refreshed each file independently, so a page could load a new
+ * index.html against a stale app.js and quietly lose half a feature. Every
+ * asset in a page load now comes from a single version, or none of it does.
+ *
+ * A new build installs alongside the old one and waits, so a page that is
+ * already open keeps the version it started with. The page offers a refresh
+ * when the new one is ready.
  */
 
-const CACHE = 'conjugaison-v1';
+// Replaced with the commit SHA at deploy time; stays literal for local work.
+const VERSION = '__BUILD__';
+const CACHE = `conjugaison-${VERSION}`;
 
 const ASSETS = [
   './',
@@ -18,7 +24,11 @@ const ASSETS = [
   'js/app.js',
   'js/answer.js',
   'js/conjugator.js',
+  'js/daily.js',
+  'js/recap.js',
+  'js/rules.js',
   'js/scheduler.js',
+  'js/sentences.js',
   'js/verbs.js',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -28,13 +38,12 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE)
-      // One bad URL would reject addAll and leave nothing cached, so each
-      // asset is added on its own.
-      .then((cache) => Promise.allSettled(ASSETS.map((asset) => cache.add(asset))))
-      .then(() => self.skipWaiting()),
-  );
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(
+    // `reload` skips the HTTP cache, so a build cannot be precached from a
+    // stale copy. addAll is all-or-nothing on purpose: a half-installed
+    // version is exactly what this file exists to prevent.
+    ASSETS.map((asset) => new Request(asset, { cache: 'reload' })),
+  )));
 });
 
 self.addEventListener('activate', (event) => {
@@ -45,6 +54,11 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+/** The page asks for the new version when the reader is ready for it. */
+self.addEventListener('message', (event) => {
+  if (event.data === 'skip-waiting') self.skipWaiting();
+});
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
@@ -53,25 +67,18 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(request, { ignoreSearch: true });
-
-    const network = fetch(request)
-      .then((response) => {
-        if (response && response.ok) cache.put(request, response.clone());
-        return response;
-      })
-      .catch(() => null);
-
     if (cached) return cached;
 
-    const fresh = await network;
-    if (fresh) return fresh;
-
-    // Offline and never cached: a navigation still gets the app shell, which
-    // is enough to run, because the data lives in the bundle.
-    if (request.mode === 'navigate') {
-      const shell = await cache.match('index.html') ?? await cache.match('./');
-      if (shell) return shell;
+    try {
+      return await fetch(request);
+    } catch {
+      // Offline and not precached: a navigation still gets the app shell,
+      // which is enough to run, because the data ships in the bundle.
+      if (request.mode === 'navigate') {
+        const shell = await cache.match('index.html') ?? await cache.match('./');
+        if (shell) return shell;
+      }
+      return new Response('Offline', { status: 503, statusText: 'Offline' });
     }
-    return new Response('Offline', { status: 503, statusText: 'Offline' });
   })());
 });

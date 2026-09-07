@@ -430,6 +430,24 @@ kbd {
 
 /* -------------------------------------------------------------- settings */
 
+.update {
+  position: fixed;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 7;
+  padding: 11px 18px;
+  font-size: .85rem;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+@media (prefers-color-scheme: dark) { .update { color: #12141a; } }
+
 .backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .35); z-index: 5; }
 
 .settings {
