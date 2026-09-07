@@ -17,6 +17,11 @@
   --warn: #8a5a00;
   --warn-soft: #fdf3e0;
 
+  --grade-again: #c0392b;
+  --grade-good: #1d7a4c;
+  --grade-easy: #2f4bd8;
+  --grade-ink: #ffffff;
+
   --tier-known: #1f7a4d;
   --tier-young: #d9911f;
   --tier-learning: #cf4436;
@@ -45,6 +50,11 @@
     --bad-soft: #33201e;
     --warn: #e8c07a;
     --warn-soft: #2e2718;
+    --grade-again: #ff9d95;
+    --grade-good: #62d9a0;
+    --grade-easy: #93a6ff;
+    --grade-ink: #14151b;
+
     --tier-known: #62d9a0;
     --tier-young: #e8b45c;
     --tier-learning: #ff8b80;
@@ -250,24 +260,30 @@ button { font: inherit; }
 
 /* --------------------------------------------------------------- grading */
 
-.grades { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 22px; }
+/* Three buttons, told apart by colour before they are read: red is wrong,
+   green is right, blue retires the card. */
+.grades { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 22px; }
 
 .grade {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 11px 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--line);
+  padding: 14px 6px;
+  background: var(--grade-colour);
+  border: none;
   border-radius: 12px;
-  color: var(--ink);
+  color: var(--grade-ink);
   cursor: pointer;
 }
-.grade:hover { border-color: var(--ink-faint); }
-.grade.suggested { border-color: var(--accent); background: var(--accent-soft); }
-.grade b { font-size: .88rem; font-weight: 600; }
-.grade span { font-size: .7rem; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+.grade-again { --grade-colour: var(--grade-again); }
+.grade-good { --grade-colour: var(--grade-good); }
+.grade-easy { --grade-colour: var(--grade-easy); }
+
+.grade:hover { filter: brightness(1.08); }
+.grade.suggested { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--grade-colour); }
+.grade b { font-size: .92rem; font-weight: 600; }
+.grade span { font-size: .7rem; opacity: .75; font-variant-numeric: tabular-nums; }
 
 /* ----------------------------------------------------------------- empty */
 
@@ -396,5 +412,6 @@ legend {
   .stats { gap: 12px; }
   .stats dt { font-size: .58rem; letter-spacing: .04em; }
   .stats dd { font-size: 1rem; }
-  .grades { grid-template-columns: repeat(2, 1fr); }
+  .grade { padding: 13px 4px; }
+  .grade b { font-size: .84rem; }
 }

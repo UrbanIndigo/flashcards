@@ -260,12 +260,14 @@ function renderResult(verdict) {
 function renderGrades(verdict) {
   const box = $('grades');
   const state = progress[queue[0]] ?? newCardState();
-  const suggested = { correct: 2, close: 1, wrong: 0 }[verdict] ?? null;
+  // An accent slip is still the wrong form, so it suggests Again rather than
+  // waving it through.
+  const suggested = { correct: 1, close: 0, wrong: 0 }[verdict] ?? null;
 
   box.innerHTML = '';
   for (const grade of GRADES) {
     const button = document.createElement('button');
-    button.className = `grade${grade.id === suggested ? ' suggested' : ''}`;
+    button.className = `grade grade-${grade.tone}${grade.id === suggested ? ' suggested' : ''}`;
     button.type = 'button';
     button.innerHTML = '<b></b><span></span>';
     button.querySelector('b').textContent = grade.label;
@@ -349,7 +351,7 @@ function grade_(gradeId) {
   // In typing mode the answer itself says whether you were right; in reveal
   // mode the only evidence is how you graded yourself.
   session.seen += 1;
-  if (lastVerdict ? lastVerdict === 'correct' : gradeId >= 2) session.correct += 1;
+  if (lastVerdict ? lastVerdict === 'correct' : gradeId >= 1) session.correct += 1;
 
   // "Again" means it should come back before the session ends, but not
   // immediately — a couple of cards of separation is enough to make it a
@@ -538,7 +540,7 @@ document.addEventListener('keydown', (event) => {
     return;
   }
 
-  if (answered && ['1', '2', '3', '4'].includes(event.key)) {
+  if (answered && ['1', '2', '3'].includes(event.key)) {
     event.preventDefault();
     grade_(Number(event.key) - 1);
     return;
@@ -547,7 +549,7 @@ document.addEventListener('keydown', (event) => {
   // Enter accepts the suggested grade, so a correct typed answer is two keys.
   if (answered && event.key === 'Enter') {
     event.preventDefault();
-    grade_({ correct: 2, close: 1, wrong: 0 }[lastVerdict] ?? 2);
+    grade_({ correct: 1, close: 0, wrong: 0 }[lastVerdict] ?? 1);
     return;
   }
 

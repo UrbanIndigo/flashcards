@@ -48,9 +48,18 @@ Then open <http://localhost:8000>. Any static file server works.
 
 ## Using it
 
-- **Space** reveals the answer, **1**–**4** grade it, **S** opens settings.
-- **Again / Hard / Good / Easy** — each button shows when the card will next
-  come back. *Again* returns it a few cards later, in the same session.
+- **Space** reveals the answer, **1**–**3** grade it, **S** opens settings.
+- Three buttons, coloured so they can be hit without reading. Each shows when
+  the card will next come back:
+
+| | | |
+|---|---|---|
+| **Again** | red | Got it wrong. Returns a few cards later, in the same session. |
+| **Got it** | green | Right. Spaces the card out further each time. |
+| **Too easy** | blue | Right, and you would rather not see it again — jumps straight to the longest interval there is, a year. |
+
+  *Too easy* retires a card rather than deleting it: if it ever comes round
+  again and you miss it, it is relearnt like any other.
 - **Show the full table** prints the whole six-person paradigm, which is
   usually the fastest way to fix a form you keep missing.
 - The **bar along the bottom** breaks the whole selected deck down by how well
