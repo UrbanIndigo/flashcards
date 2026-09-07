@@ -88,11 +88,29 @@ Then open <http://localhost:8000>. Any static file server works.
   which is the point: the bar should show a verb you have started forgetting,
   not the fact that you once knew it.
 
+### A day's worth
+
+New cards are rationed: **twenty a day** by default. Reviews that fall due are
+always shown — that is the whole point of a spaced system — but new material
+is not dealt endlessly. When the day's allowance is spent and the reviews are
+done, you get a finish line rather than another twenty:
+
+> **That is your 20 for today**
+> 20 new cards done, and 312 still waiting in this deck.
+> [Add 5] [Add 10] [Add 20]
+
+Adding more only extends *today*; tomorrow returns to the configured goal, so
+one enthusiastic evening does not silently raise the bar. A card counts
+against the allowance the first time you answer it, not when it is queued, so
+quitting halfway does not burn cards you never saw. The **New today** counter
+in the header shows where you are.
+
 In **Settings** you can choose:
 
 | | |
 |---|---|
 | **Deck** | Core verbs, irregulars, regulars, être verbs, or all 88 |
+| **New cards a day** | 5, 10, 20 or 40 |
 | **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent |
 | **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up |
 | **Direction** | Give the form, name the verb, or mix the two |
@@ -182,6 +200,7 @@ css/styles.css
 js/verbs.js             the dataset
 js/conjugator.js        derives every tense from it
 js/scheduler.js         review intervals
+js/daily.js             the daily allowance of new cards
 js/answer.js            typed-answer matching, both directions
 js/app.js               cards, session queue, settings
 ```
