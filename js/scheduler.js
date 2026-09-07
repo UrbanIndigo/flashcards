@@ -15,8 +15,16 @@ const MIN_EASE = 1.3;
 const MAX_EASE = 2.8;
 const MAX_INTERVAL = 365;
 
+/**
+ * How many times a new card has to be answered correctly before it starts
+ * being spaced out in days. One right answer is weak evidence — you may have
+ * just read it — so a card is asked again later in the same session, and only
+ * leaves once you have produced it twice.
+ */
+export const LEARNING_STEPS = 2;
+
 export function newCardState() {
-  return { interval: 0, ease: 2.5, reps: 0, lapses: 0, due: 0 };
+  return { interval: 0, ease: 2.5, reps: 0, lapses: 0, step: 0, due: 0 };
 }
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
@@ -26,17 +34,30 @@ const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
  * `interval` is in days; a zero interval means "again this session".
  */
 export function review(state = newCardState(), grade, now = Date.now()) {
-  const next = { ...state };
-  const first = next.reps === 0;
+  // `step` is absent from histories saved before learning steps existed.
+  const next = { ...state, step: state.step ?? 0 };
+  // An interval of a day or more means the card has graduated and is being
+  // spaced out; anything less means it is still being learnt.
+  const graduated = next.interval >= 1;
 
   switch (grade) {
     case 0:
       next.lapses += 1;
       next.ease = clamp(next.ease - 0.2, MIN_EASE, MAX_EASE);
       next.interval = 0;
+      next.step = 0;
       break;
     case 1:
-      next.interval = first ? 1 : Math.max(1, next.interval * next.ease);
+      if (graduated) {
+        next.interval = Math.max(1, next.interval * next.ease);
+      } else if (next.step + 1 >= LEARNING_STEPS) {
+        next.step = 0;
+        next.interval = 1;
+      } else {
+        // Right, but not yet often enough: hold it in this session.
+        next.step += 1;
+        next.interval = 0;
+      }
       break;
     case 2:
       // "I would rather not see it again": pushed straight to the longest
@@ -45,6 +66,7 @@ export function review(state = newCardState(), grade, now = Date.now()) {
       // like anything else.
       next.ease = clamp(next.ease + 0.15, MIN_EASE, MAX_EASE);
       next.interval = MAX_INTERVAL;
+      next.step = 0;
       break;
     default:
       throw new Error(`Unknown grade: ${grade}`);
@@ -73,7 +95,9 @@ export function formatDue(timestamp, now = Date.now()) {
 /** A one-line description of what a grade will do, for the buttons. */
 export function previewInterval(state, grade, now = Date.now()) {
   const days = review(state, grade, now).interval;
-  if (days === 0) return 'soon';
+  // Both of these come back within the session; the wording separates a card
+  // you failed from one that simply needs a second correct answer.
+  if (days === 0) return grade === 0 ? 'soon' : 'later';
   if (days < 1) return '<1d';
   if (days < 30) return `${Math.round(days)}d`;
   if (days < 365) return `${Math.round(days / 30)}mo`;

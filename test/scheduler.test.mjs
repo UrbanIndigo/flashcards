@@ -8,11 +8,51 @@ import {
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1_700_000_000_000;
 
-test('a new card you got right comes back tomorrow', () => {
-  const state = review(newCardState(), 1, NOW);
-  assert.equal(state.interval, 1);
-  assert.equal(state.reps, 1);
-  assert.equal(state.due, NOW + DAY);
+test('a new card needs two correct answers before it is spaced out', () => {
+  const once = review(newCardState(), 1, NOW);
+  assert.equal(once.interval, 0, 'still being learnt');
+  assert.equal(once.step, 1);
+  assert.ok(isDue(once, NOW), 'so it comes back in the same session');
+
+  const twice = review(once, 1, NOW);
+  assert.equal(twice.interval, 1, 'graduates on the second correct answer');
+  assert.equal(twice.step, 0, 'and the step counter resets');
+  assert.equal(twice.due, NOW + DAY);
+  assert.equal(twice.reps, 2);
+});
+
+test('a wrong answer sends a half-learnt card back to the start', () => {
+  const once = review(newCardState(), 1, NOW);
+  assert.equal(once.step, 1);
+  const failed = review(once, 0, NOW);
+  assert.equal(failed.step, 0, 'the correct answer no longer counts');
+  // So it still takes two more right answers to graduate.
+  assert.equal(review(failed, 1, NOW).interval, 0);
+  assert.equal(review(review(failed, 1, NOW), 1, NOW).interval, 1);
+});
+
+test('a graduated card is spaced out on every correct answer', () => {
+  const day = review(review(newCardState(), 1, NOW), 1, NOW);
+  assert.equal(day.interval, 1);
+  // No second step needed once it has graduated.
+  assert.equal(review(day, 1, NOW).interval, 2.5);
+});
+
+test('a lapsed card has to be relearnt twice as well', () => {
+  let state = review(review(newCardState(), 1, NOW), 1, NOW);
+  for (let i = 0; i < 3; i += 1) state = review(state, 1, NOW);
+  assert.ok(state.interval > 1);
+
+  state = review(state, 0, NOW);
+  assert.equal(state.interval, 0);
+  assert.equal(review(state, 1, NOW).interval, 0, 'one right answer is not enough');
+  assert.equal(review(review(state, 1, NOW), 1, NOW).interval, 1);
+});
+
+test('"too easy" skips the learning steps entirely', () => {
+  const state = review(newCardState(), 2, NOW);
+  assert.equal(state.interval, 365);
+  assert.equal(state.step, 0);
 });
 
 test('"too easy" retires a card straight away', () => {
@@ -25,9 +65,10 @@ test('"too easy" retires a card straight away', () => {
 });
 
 test('intervals grow as a card is repeatedly answered well', () => {
-  let state = newCardState();
-  const seen = [];
-  for (let i = 0; i < 5; i += 1) {
+  // Graduate it first, then watch the spacing widen.
+  let state = review(review(newCardState(), 1, NOW), 1, NOW);
+  const seen = [state.interval];
+  for (let i = 0; i < 4; i += 1) {
     state = review(state, 1, NOW);
     seen.push(state.interval);
   }
@@ -68,7 +109,9 @@ test('there are exactly three grades, and nothing else is accepted', () => {
 
 test('button previews read in sensible units', () => {
   assert.equal(previewInterval(newCardState(), 0, NOW), 'soon');
-  assert.equal(previewInterval(newCardState(), 1, NOW), '1d');
+  // A new card's first correct answer keeps it in the session.
+  assert.equal(previewInterval(newCardState(), 1, NOW), 'later');
+  assert.equal(previewInterval(review(newCardState(), 1, NOW), 1, NOW), '1d');
   assert.equal(previewInterval(newCardState(), 2, NOW), '1y');
   const settled = { interval: 20, ease: 2.5, reps: 4, lapses: 0, due: NOW };
   assert.equal(previewInterval(settled, 1, NOW), '2mo');
@@ -92,13 +135,14 @@ test('cards are banded by how well established they are', () => {
   assert.equal(tierOf(undefined), 'new');
   assert.equal(tierOf(newCardState()), 'new');
 
-  // One right answer puts a card a day out: started, but not established.
-  assert.equal(tierOf(review(newCardState(), 1, NOW)), 'young');
+  // One right answer is not yet a day out, so it is still being learnt.
+  assert.equal(tierOf(review(newCardState(), 1, NOW)), 'learning');
+  assert.equal(tierOf(review(review(newCardState(), 1, NOW), 1, NOW)), 'young');
 
   // Answering Again zeroes the interval, so it drops back to learning even
   // though it has been reviewed several times.
   let state = newCardState();
-  for (let i = 0; i < 6; i += 1) state = review(state, 1, NOW);
+  for (let i = 0; i < 7; i += 1) state = review(state, 1, NOW);
   assert.equal(tierOf(state), 'known', `interval ${state.interval}`);
   assert.equal(tierOf(review(state, 0, NOW)), 'learning');
 });

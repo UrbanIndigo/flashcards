@@ -353,10 +353,14 @@ function grade_(gradeId) {
   session.seen += 1;
   if (lastVerdict ? lastVerdict === 'correct' : gradeId >= 1) session.correct += 1;
 
-  // "Again" means it should come back before the session ends, but not
-  // immediately — a couple of cards of separation is enough to make it a
-  // real recall attempt rather than an echo.
-  if (gradeId === 0) queue.splice(Math.min(queue.length, 3), 0, id);
+  // A card that has not graduated comes back before the session ends, far
+  // enough down the queue to be a real recall attempt rather than an echo.
+  // A card you failed returns sooner than one that just needs its second
+  // correct answer.
+  if (progress[id].interval === 0) {
+    const gap = gradeId === 0 ? 3 : 8;
+    queue.splice(Math.min(queue.length, gap), 0, id);
+  }
 
   renderCard();
 }
