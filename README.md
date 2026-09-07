@@ -60,6 +60,17 @@ Then open <http://localhost:8000>. Any static file server works.
 
   *Too easy* retires a card rather than deleting it: if it ever comes round
   again and you miss it, it is relearnt like any other.
+
+- **A new card has to be answered correctly twice** before it starts being
+  spaced out in days. One right answer is weak evidence — you may have just
+  read it — so the card comes back later in the same session, far enough down
+  the queue to be a real recall attempt, and only leaves once you have
+  produced it twice. *Again* wipes that progress; *Too easy* skips it. A card
+  you lapse on has to be relearnt the same way.
+
+  Half-learnt cards count as **Learning** on the progress bar, and the *Got
+  it* button reads `later` rather than `1d` until the card is ready to
+  graduate.
 - **Show the full table** prints the whole six-person paradigm, which is
   usually the fastest way to fix a form you keep missing.
 - The **bar along the bottom** breaks the whole selected deck down by how well
