@@ -70,6 +70,24 @@ Then open <http://localhost:8000>. Any static file server works.
 
   Half-learnt cards count as **Learning** on the progress bar until they
   graduate.
+- **Every answer comes with the rule behind it** — the transferable part:
+
+  > **je parlerai**
+  > The whole infinitive (parler-) plus -ai, -as, -a, -ons, -ez, -ont. Same
+  > endings for every verb.
+
+  The note is specific to the card rather than generic. *nous mangeons*
+  explains the kept e; *je mange* does not, because nothing happened there.
+  *nous mangions* points out that the softening only applies before a, o and
+  u. An irregular participle is flagged, but only when it really is one —
+  *parti* is exactly what the -ir pattern predicts, so calling it irregular
+  would be crying wolf.
+
+  Because the conjugator derives forms from rules rather than storing tables,
+  the reasoning already exists; the note just says it out loud. A test
+  asserts that a compound tense's note always contains the participle printed
+  above it, so the explanation cannot drift from the answer.
+
 - **Show the full table** prints the whole six-person paradigm, which is
   usually the fastest way to fix a form you keep missing.
 - The **bar along the bottom** breaks the whole selected deck down by how well
@@ -221,6 +239,7 @@ js/conjugator.js        derives every tense from it
 js/scheduler.js         review intervals
 js/daily.js             the daily allowance of new cards
 js/recap.js             the day's review log and its summary
+js/rules.js             the one-line rule behind each answer
 js/answer.js            typed-answer matching, both directions
 js/app.js               cards, session queue, settings
 ```
