@@ -7,10 +7,13 @@ import {
   GRADES, TIERS, newCardState, review, isDue, formatDue, previewInterval, tierOf,
 } from './scheduler.js';
 import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
+import {
+  DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached,
+} from './daily.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 const PROGRESS_KEY = 'conjugaison.progress.v1';
-const NEW_PER_SESSION = 20;
+const DAILY_KEY = 'conjugaison.daily.v1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,6 +23,7 @@ const DEFAULT_SETTINGS = {
   pronouns: [0, 1, 2, 3, 4, 5],
   direction: 'produce', // 'produce' | 'recognise' | 'mix'
   mode: 'reveal',       // 'reveal' | 'type'
+  dailyNew: DEFAULT_DAILY_NEW,
 };
 
 const DIRECTIONS = [
@@ -49,6 +53,7 @@ function save(key, value) {
 
 let settings = load(SETTINGS_KEY, DEFAULT_SETTINGS);
 let progress = load(PROGRESS_KEY, {});
+let daily = rollOver(load(DAILY_KEY, {}), todayKey(), settings.dailyNew);
 
 // Guard against a stored deck or tense that no longer exists.
 if (!DECKS.some((d) => d.id === settings.deck)) settings.deck = DEFAULT_SETTINGS.deck;
@@ -57,6 +62,7 @@ if (!settings.tenses.length) settings.tenses = [...DEFAULT_SETTINGS.tenses];
 settings.pronouns = settings.pronouns.filter((p) => p >= 0 && p < 6);
 if (!settings.pronouns.length) settings.pronouns = [...DEFAULT_SETTINGS.pronouns];
 if (!DIRECTIONS.some(([id]) => id === settings.direction)) settings.direction = DEFAULT_SETTINGS.direction;
+if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTINGS.dailyNew;
 
 // ------------------------------------------------------------------ cards
 
@@ -110,18 +116,24 @@ let lastVerdict = null;
 const session = { seen: 0, correct: 0 };
 let forceStudy = false;
 
+function unseen() {
+  return pool().filter((id) => !progress[id]);
+}
+
 function buildQueue() {
+  daily = rollOver(daily, todayKey(), settings.dailyNew);
   const now = Date.now();
   const all = pool();
   const due = all.filter((id) => progress[id] && isDue(progress[id], now));
-  const fresh = all.filter((id) => !progress[id]);
+  // Reviews always come through; only new cards are rationed.
+  const fresh = shuffle(unseen()).slice(0, remainingNew(daily));
 
   if (forceStudy && !due.length && !fresh.length) {
-    // Nothing is due and nothing is new: practise the whole deck anyway,
-    // soonest-due first, without touching the schedule's shape.
+    // Nothing due and nothing new left in the deck: practise it anyway,
+    // without touching the schedule's shape.
     return shuffle(all).slice(0, 40);
   }
-  return shuffle([...due, ...shuffle(fresh).slice(0, NEW_PER_SESSION)]);
+  return shuffle([...due, ...fresh]);
 }
 
 function nextDueAt() {
@@ -129,8 +141,8 @@ function nextDueAt() {
   return times.length ? Math.min(...times) : null;
 }
 
-function remaining() {
-  return queue.length;
+function newTodayLabel() {
+  return `${daily.introduced}/${daily.allowance}`;
 }
 
 // -------------------------------------------------------------- rendering
@@ -144,11 +156,7 @@ function renderCard() {
   if (!queue.length) {
     card.hidden = true;
     empty.hidden = false;
-    const next = nextDueAt();
-    $('empty-title').textContent = 'All caught up';
-    $('empty-body').textContent = next
-      ? `Nothing is due right now. The next card is back ${formatDue(next)}.`
-      : 'Pick a deck or a tense in Settings to start reviewing.';
+    renderEmpty();
     updateStats();
     return;
   }
@@ -202,6 +210,35 @@ function renderCard() {
 
   if (typing) $('answer-input').focus();
   updateStats();
+}
+
+/**
+ * Two different endings: you have hit the day's target and could choose to
+ * go on, or the deck genuinely has nothing left to show you.
+ */
+function renderEmpty() {
+  const next = nextDueAt();
+  const stillNew = unseen().length;
+  const hitGoal = goalReached(daily) && stillNew > 0;
+
+  $('add-more').hidden = !hitGoal;
+  $('study-anyway').hidden = hitGoal;
+
+  if (hitGoal) {
+    $('empty-title').textContent = `That is your ${daily.allowance} for today`;
+    const dueLine = next && next > Date.now()
+      ? ` Your reviews are done too — the next one is back ${formatDue(next)}.`
+      : '';
+    $('empty-body').textContent =
+      `${daily.introduced} new cards done, and ${stillNew} still waiting in this deck.${dueLine}`
+      + ' Add more only if you actually want to.';
+    return;
+  }
+
+  $('empty-title').textContent = 'All caught up';
+  $('empty-body').textContent = next
+    ? `Nothing is due right now. The next card is back ${formatDue(next)}.`
+    : 'Pick a deck or a tense in Settings to start reviewing.';
 }
 
 function renderResult(verdict) {
@@ -336,7 +373,7 @@ function updateProgressBar() {
 function updateStats() {
   $('stat-seen').textContent = session.seen;
   $('stat-correct').textContent = session.seen ? `${session.correct}/${session.seen}` : '0';
-  $('stat-due').textContent = remaining();
+  $('stat-new').textContent = newTodayLabel();
   updateProgressBar();
 }
 
@@ -345,6 +382,12 @@ function updateStats() {
 function grade_(gradeId) {
   if (!answered || !current) return;
   const id = queue.shift();
+  // A card counts against the day's allowance when you first answer it, not
+  // when it is queued — quitting early does not spend cards you never saw.
+  if (!progress[id]) {
+    daily.introduced += 1;
+    save(DAILY_KEY, daily);
+  }
   progress[id] = review(progress[id] ?? newCardState(), gradeId);
   save(PROGRESS_KEY, progress);
 
@@ -433,6 +476,23 @@ function renderSettings() {
     }));
   });
 
+  const goals = $('goal-options');
+  goals.innerHTML = '';
+  for (const goal of DAILY_GOALS) {
+    goals.append(option({
+      type: 'radio', name: 'goal', label: String(goal),
+      checked: settings.dailyNew === goal,
+      onChange: (on) => {
+        if (!on) return;
+        settings.dailyNew = goal;
+        // Apply it to today as well, rather than only from tomorrow.
+        daily.allowance = goal;
+        save(DAILY_KEY, daily);
+        commitSettings();
+      },
+    }));
+  }
+
   const dirs = $('direction-options');
   dirs.innerHTML = '';
   for (const [id, label, hint] of DIRECTIONS) {
@@ -509,6 +569,16 @@ $('table-toggle').addEventListener('click', () => {
   $('table-toggle').textContent = showing ? 'Hide the full table' : 'Show the full table';
 });
 
+for (const button of document.querySelectorAll('.add')) {
+  button.addEventListener('click', () => {
+    daily.allowance += Number(button.dataset.add);
+    save(DAILY_KEY, daily);
+    forceStudy = false;
+    queue = buildQueue();
+    renderCard();
+  });
+}
+
 $('study-anyway').addEventListener('click', () => {
   forceStudy = true;
   queue = buildQueue();
@@ -523,6 +593,8 @@ $('reset').addEventListener('click', () => {
   if (!confirm('Delete your review history and start over?')) return;
   progress = {};
   save(PROGRESS_KEY, progress);
+  daily = rollOver(null, todayKey(), settings.dailyNew);
+  save(DAILY_KEY, daily);
   session.seen = 0;
   session.correct = 0;
   commitSettings();
