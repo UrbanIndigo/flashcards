@@ -92,18 +92,6 @@ export function formatDue(timestamp, now = Date.now()) {
   return `in ${months} month${months > 1 ? 's' : ''}`;
 }
 
-/** A one-line description of what a grade will do, for the buttons. */
-export function previewInterval(state, grade, now = Date.now()) {
-  const days = review(state, grade, now).interval;
-  // Both of these come back within the session; the wording separates a card
-  // you failed from one that simply needs a second correct answer.
-  if (days === 0) return grade === 0 ? 'soon' : 'later';
-  if (days < 1) return '<1d';
-  if (days < 30) return `${Math.round(days)}d`;
-  if (days < 365) return `${Math.round(days / 30)}mo`;
-  return '1y';
-}
-
 /** Cards mature at three weeks, the same threshold Anki uses. */
 export const MATURE_DAYS = 21;
 

@@ -49,8 +49,8 @@ Then open <http://localhost:8000>. Any static file server works.
 ## Using it
 
 - **Space** reveals the answer, **1**–**3** grade it, **S** opens settings.
-- Three buttons, coloured so they can be hit without reading. Each shows when
-  the card will next come back:
+- Three buttons, coloured so they can be hit without reading. When each card
+  comes back is the scheduler's problem, not yours:
 
 | | | |
 |---|---|---|
@@ -68,8 +68,7 @@ Then open <http://localhost:8000>. Any static file server works.
   produced it twice. *Again* wipes that progress; *Too easy* skips it. A card
   you lapse on has to be relearnt the same way.
 
-  Half-learnt cards count as **Learning** on the progress bar, and the *Got
-  it* button reads `later` rather than `1d` until the card is ready to
+  Half-learnt cards count as **Learning** on the progress bar until they
   graduate.
 - **Show the full table** prints the whole six-person paradigm, which is
   usually the fastest way to fix a form you keep missing.
