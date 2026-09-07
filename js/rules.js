@@ -118,6 +118,43 @@ function subjonctif(verb, person) {
   return `From the ils form of the present (ils ${conjugate(verb, 'present')[5]}), drop -ent, add -e, -es, -e, -ent.`;
 }
 
+const PS_FAMILY = {
+  a: '-ai, -as, -a, -âmes, -âtes, -èrent',
+  i: '-is, -is, -it, -îmes, -îtes, -irent',
+  u: '-us, -us, -ut, -ûmes, -ûtes, -urent',
+  in: '-ins, -ins, -int, -înmes, -întes, -inrent',
+};
+
+function passeSimple(verb) {
+  // What it *means* matters more here than how it is built: this is the
+  // tense that makes nineteenth-century novels hard to read, and the answer
+  // is that it means nothing new at all.
+  const sense = 'Means the same as the passé composé — a finished action — but written, never spoken.';
+  const ps = verb.ps;
+
+  if (!ps) {
+    const stem = stemOf(verb);
+    const family = verb.group === 'er' ? 'a' : 'i';
+    return `${sense} ${stem}- plus ${PS_FAMILY[family]}.`;
+  }
+  if (ps.type === 'in') {
+    return `${sense} venir and tenir take the -ins family: ${conjugate(verb, 'passe-simple')[0]}, ${conjugate(verb, 'passe-simple')[2]}, ${conjugate(verb, 'passe-simple')[5]}.`;
+  }
+  const hint = ps.type === 'u' && participle(verb).endsWith('u')
+    ? ` The participle ${participle(verb)} gives the stem away.`
+    : '';
+  return `${sense} Irregular stem ${ps.stem}- plus ${PS_FAMILY[ps.type]}.${hint}`;
+}
+
+function subjonctifImparfait(verb, person) {
+  const tu = conjugate(verb, 'passe-simple')[1];
+  const base = `Built from the tu form of the passé simple (tu ${tu}): drop the -s, add -sse, -sses, -ssions, -ssiez, -ssent.`;
+  if (person === 2) {
+    return `Where modern French uses the present subjunctive. The il form takes a circumflex rather than -sse: ${conjugate(verb, 'subjonctif-imparfait')[2]}.`;
+  }
+  return `Where modern French uses the present subjunctive. ${base}`;
+}
+
 /** A one-line explanation of why this form is what it is. */
 export function ruleFor(verb, tense, person) {
   switch (tense) {
@@ -128,6 +165,8 @@ export function ruleFor(verb, tense, person) {
     case 'passe-compose': return compound(verb, person, false);
     case 'plus-que-parfait': return compound(verb, person, true);
     case 'subjonctif': return subjonctif(verb, person);
+    case 'passe-simple': return passeSimple(verb);
+    case 'subjonctif-imparfait': return subjonctifImparfait(verb, person);
     default: throw new Error(`Unknown tense: ${tense}`);
   }
 }

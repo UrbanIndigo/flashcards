@@ -315,6 +315,37 @@ export const VERBS = [
   { inf: 'descendre', en: 'to go down', group: 're', tags: [REG, ETRE], aux: 'être' },
 ];
 
+/**
+ * Passé simple stems for the irregular verbs, as [stem, pattern].
+ *
+ * The three patterns are the -is, -us and -ins families; regular verbs are
+ * derived, so only the irregulars are listed. Kept as one table because that
+ * is how they are learnt — and because a verb whose participle is `-u` very
+ * often takes the -us pattern (voulu / voulus, couru / courus), which is
+ * easier to see in a list than scattered across entries.
+ */
+const PASSE_SIMPLE = {
+  'être': ['f', 'u'],        avoir: ['e', 'u'],         aller: ['all', 'a'],
+  faire: ['f', 'i'],         pouvoir: ['p', 'u'],       vouloir: ['voul', 'u'],
+  devoir: ['d', 'u'],        savoir: ['s', 'u'],        voir: ['v', 'i'],
+  venir: ['v', 'in'],        devenir: ['dev', 'in'],    revenir: ['rev', 'in'],
+  tenir: ['t', 'in'],        prendre: ['pr', 'i'],      comprendre: ['compr', 'i'],
+  apprendre: ['appr', 'i'],  mettre: ['m', 'i'],        promettre: ['prom', 'i'],
+  dire: ['d', 'i'],          lire: ['l', 'u'],          'écrire': ['écriv', 'i'],
+  boire: ['b', 'u'],         croire: ['cr', 'u'],       'connaître': ['conn', 'u'],
+  partir: ['part', 'i'],     sortir: ['sort', 'i'],     dormir: ['dorm', 'i'],
+  sentir: ['sent', 'i'],     servir: ['serv', 'i'],     ouvrir: ['ouvr', 'i'],
+  offrir: ['offr', 'i'],     courir: ['cour', 'u'],     mourir: ['mour', 'u'],
+  'naître': ['naqu', 'i'],   recevoir: ['reç', 'u'],    vivre: ['véc', 'u'],
+  suivre: ['suiv', 'i'],     rire: ['r', 'i'],          conduire: ['conduis', 'i'],
+  craindre: ['craign', 'i'],
+};
+
+for (const verb of VERBS) {
+  const ps = PASSE_SIMPLE[verb.inf];
+  if (ps) verb.ps = { stem: ps[0], type: ps[1] };
+}
+
 export const DECKS = [
   { id: 'core', label: 'Core verbs', hint: 'The essential everyday verbs', filter: (v) => v.tags.includes(CORE) },
   { id: 'irregular', label: 'Irregular', hint: 'The ones you have to memorise', filter: (v) => v.tags.includes(IRR) },

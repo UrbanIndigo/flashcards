@@ -122,6 +122,32 @@ against the allowance the first time you answer it, not when it is queued, so
 quitting halfway does not burn cards you never saw. The **New today** counter
 in the header shows where you are.
 
+### Reading novels
+
+Nineteenth-century French uses two tenses that barely exist in speech, which
+is why Dumas and Zola can be hard going even when you know the spoken
+language:
+
+| | |
+|---|---|
+| **Passé simple** | *il fut, il eut, il dit, il prit, ils regardèrent* — means exactly what the passé composé means, a finished action, but written rather than spoken |
+| **Subjonctif imparfait** | *qu'il fût, qu'elle eût* — where modern French would use the present subjunctive |
+
+Turn both on in Settings, set **Direction** to *Name the verb*, and you get a
+reading drill: the card shows **il but** and you answer *boire* — passé
+simple, "he drank". That is the exact skill a novel asks for, since when
+reading you never have to produce these forms, only recognise them.
+
+The passé simple has three families of endings (`-ai`, `-is`, `-us`) plus
+*venir* and *tenir* on their own (`vins, vint, vinrent`), and the notes point
+out that a `-u` participle usually predicts the `-us` stem: *couru → courus*,
+*bu → but*. The imperfect subjunctive is built off the passé simple, so
+knowing one gives you the other.
+
+Sentences from actual novels are not included. Doing that properly means
+parsing real public-domain texts rather than quoting from memory, and
+inventing lines to attribute to Dumas would be worse than useless.
+
 ### The recap
 
 The finish screen ends with the day's recap:
@@ -148,7 +174,7 @@ In **Settings** you can choose:
 |---|---|
 | **Deck** | Core verbs, irregulars, regulars, être verbs, or all 88 |
 | **New cards a day** | 5, 10, 20 or 40 |
-| **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent |
+| **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent, and the two literary tenses below |
 | **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up |
 | **Direction** | Give the form, name the verb, or mix the two |
 | **How to answer** | Reveal from memory, or type the answer and have it checked |
@@ -246,6 +272,9 @@ js/app.js               cards, session queue, settings
 
 ## Not covered
 
-The impératif, the passé simple, and reflexive verbs (*se lever*) are out of
-scope. Verbs that take either auxiliary depending on meaning (*passer*,
-*sortir* used transitively) are listed with only their common one.
+The impératif and reflexive verbs (*se lever*) are out of scope. Verbs that
+take either auxiliary depending on meaning (*passer*, *sortir* used
+transitively) are listed with only their common one.
+
+Reading practice is on isolated forms, not sentences from real books — see
+the note in **Reading novels** above.

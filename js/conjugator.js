@@ -18,6 +18,10 @@ export const TENSES = [
   { id: 'conditionnel', label: 'Conditionnel', hint: 'je parlerais' },
   { id: 'plus-que-parfait', label: 'Plus-que-parfait', hint: "j'avais parlé" },
   { id: 'subjonctif', label: 'Subjonctif présent', hint: 'que je parle' },
+  // The two literary tenses. You will meet these constantly in Dumas, Hugo
+  // and Zola, and essentially never in conversation.
+  { id: 'passe-simple', label: 'Passé simple', hint: 'je parlai — in books' },
+  { id: 'subjonctif-imparfait', label: 'Subjonctif imparfait', hint: "qu'il parlât — in books" },
 ];
 
 export const TENSE_IDS = TENSES.map((t) => t.id);
@@ -32,6 +36,12 @@ const ENDINGS = {
   futur: ['ai', 'as', 'a', 'ons', 'ez', 'ont'],
   conditionnel: ['ais', 'ais', 'ait', 'ions', 'iez', 'aient'],
   subjonctif: ['e', 'es', 'e', 'ions', 'iez', 'ent'],
+  passeSimple: {
+    a: ['ai', 'as', 'a', 'âmes', 'âtes', 'èrent'],
+    i: ['is', 'is', 'it', 'îmes', 'îtes', 'irent'],
+    u: ['us', 'us', 'ut', 'ûmes', 'ûtes', 'urent'],
+    in: ['ins', 'ins', 'int', 'înmes', 'întes', 'inrent'],
+  },
 };
 
 /**
@@ -40,7 +50,9 @@ const ENDINGS = {
  */
 function soften(stem, ending, kind) {
   if (!kind) return stem;
-  const hard = ['a', 'o', 'u'].includes(ending[0]);
+  // Strip the accent first: the passé simple ending -âmes is still an a, and
+  // "nous mangeâmes" needs the e just as "nous mangeons" does.
+  const hard = ['a', 'o', 'u'].includes(ending.normalize('NFD')[0]);
   if (!hard) return stem;
   if (kind === 'ger') return `${stem}e`;
   if (kind === 'cer') return `${stem.slice(0, -1)}ç`;
@@ -143,6 +155,44 @@ const AUX_VERBS = {
 };
 
 /**
+ * The passé simple stem and which family of endings it takes. Regular verbs
+ * are derived; the irregulars carry their own in the dataset.
+ */
+function passeSimpleParts(verb) {
+  if (verb.ps) return verb.ps;
+  if (verb.group === 'er') return { stem: erStems(verb).weak, type: 'a' };
+  return { stem: stemOf(verb), type: 'i' };
+}
+
+function passeSimple(verb) {
+  const { stem, type } = passeSimpleParts(verb);
+  return ENDINGS.passeSimple[type].map((end) => soften(stem, end, verb.soften) + end);
+}
+
+const CIRCUMFLEX = { a: 'â', e: 'ê', i: 'î', o: 'ô', u: 'û' };
+
+/** parla -> parlât, fu -> fût, vin -> vînt. */
+function circumflexLastVowel(stem) {
+  for (let i = stem.length - 1; i >= 0; i -= 1) {
+    const accented = CIRCUMFLEX[stem[i]];
+    if (accented) return stem.slice(0, i) + accented + stem.slice(i + 1);
+  }
+  return stem;
+}
+
+/**
+ * Built off the passé simple, as it always is: take the tu form, drop its
+ * -s, and add -sse ... -ssent. The il form takes a circumflex instead.
+ */
+function subjonctifImparfait(verb) {
+  const base = passeSimple(verb)[1].slice(0, -1);
+  return [
+    `${base}sse`, `${base}sses`, `${circumflexLastVowel(base)}t`,
+    `${base}ssions`, `${base}ssiez`, `${base}ssent`,
+  ];
+}
+
+/**
  * All six forms of `verb` in `tense`, bare (no pronoun attached).
  */
 export function conjugate(verb, tense) {
@@ -157,6 +207,10 @@ export function conjugate(verb, tense) {
       return ENDINGS.conditionnel.map((end) => futurStem(verb) + end);
     case 'subjonctif':
       return subjonctif(verb);
+    case 'passe-simple':
+      return passeSimple(verb);
+    case 'subjonctif-imparfait':
+      return subjonctifImparfait(verb);
     case 'passe-compose':
       return compound(verb, AUX_VERBS[auxOf(verb)].present);
     case 'plus-que-parfait':
@@ -175,7 +229,7 @@ export function attachPronoun(form, index, tense) {
   const clause = `${elided}${form}`;
   // The subjunctive is only ever met after "que", and learners are taught it
   // that way, so the card shows it that way too.
-  if (tense !== 'subjonctif') return clause;
+  if (!tense.startsWith('subjonctif')) return clause;
   return `${VOWELISH.test(pronoun) ? "qu'" : 'que '}${clause}`;
 }
 
