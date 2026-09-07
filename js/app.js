@@ -553,7 +553,10 @@ document.addEventListener('keydown', (event) => {
     return;
   }
 
-  if (!answered && (event.key === ' ' || (event.key === 'Enter' && !typing))) {
+  // Space only reveals when you are not typing into the answer box — a
+  // compound tense like "ai parlé" has a space in it, and swallowing that
+  // would make the form unanswerable. While typing, Enter submits the form.
+  if (!answered && !typing && (event.key === ' ' || event.key === 'Enter')) {
     event.preventDefault();
     reveal();
   }
