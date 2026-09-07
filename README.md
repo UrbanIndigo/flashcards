@@ -104,6 +104,26 @@ against the allowance the first time you answer it, not when it is queued, so
 quitting halfway does not burn cards you never saw. The **New today** counter
 in the header shows where you are.
 
+### The recap
+
+The finish screen ends with the day's recap:
+
+> 63 answered · 45 right (71%) · 20 new
+>
+> **Worth another look**
+> répondre · passé composé · nous  ×4 — *nous avons répondu*
+> mourir · présent · nous — *nous mourons*
+
+The score is the least of it. The useful half is the list of forms you
+actually missed with their answers, which is otherwise invisible the moment
+the card goes past — ordered most-missed first, because a verb you fumbled
+four times deserves attention before one you slipped on once. A card you
+missed and then got right still appears; getting there eventually is exactly
+what makes it worth revisiting.
+
+Card state records where a verb has got to, not what happened today, so the
+recap keeps its own log in `js/recap.js`. It resets with the calendar day.
+
 In **Settings** you can choose:
 
 | | |
@@ -200,6 +220,7 @@ js/verbs.js             the dataset
 js/conjugator.js        derives every tense from it
 js/scheduler.js         review intervals
 js/daily.js             the daily allowance of new cards
+js/recap.js             the day's review log and its summary
 js/answer.js            typed-answer matching, both directions
 js/app.js               cards, session queue, settings
 ```

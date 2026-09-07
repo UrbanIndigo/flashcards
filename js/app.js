@@ -10,10 +10,12 @@ import { checkAnswer, checkRecognition, verbsMatching } from './answer.js';
 import {
   DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached,
 } from './daily.js';
+import { rollLog, record, summarise, accuracy, MAX_LISTED } from './recap.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 const PROGRESS_KEY = 'conjugaison.progress.v1';
 const DAILY_KEY = 'conjugaison.daily.v1';
+const LOG_KEY = 'conjugaison.log.v1';
 
 const $ = (id) => document.getElementById(id);
 
@@ -54,6 +56,7 @@ function save(key, value) {
 let settings = load(SETTINGS_KEY, DEFAULT_SETTINGS);
 let progress = load(PROGRESS_KEY, {});
 let daily = rollOver(load(DAILY_KEY, {}), todayKey(), settings.dailyNew);
+let log = rollLog(load(LOG_KEY, {}), todayKey());
 
 // Guard against a stored deck or tense that no longer exists.
 if (!DECKS.some((d) => d.id === settings.deck)) settings.deck = DEFAULT_SETTINGS.deck;
@@ -216,6 +219,56 @@ function renderCard() {
  * Two different endings: you have hit the day's target and could choose to
  * go on, or the deck genuinely has nothing left to show you.
  */
+/** What a card asks and what it answers, whichever way round it runs. */
+function cardFaces({ verb, tense, person, direction }) {
+  const solution = answerFor(verb, tense, person);
+  if (direction === 'recognise') return { question: solution, answer: verb.inf };
+  return {
+    question: `${verb.inf} · ${tenseLabel(tense).toLowerCase()} · ${PRONOUN_LABELS[person]}`,
+    answer: solution,
+  };
+}
+
+function renderRecap() {
+  const summary = summarise(log);
+  const box = $('recap');
+  box.hidden = summary.answered === 0;
+  if (box.hidden) return;
+
+  const parts = [
+    `${summary.answered} answered`,
+    `${summary.right} right (${accuracy(summary)}%)`,
+    `${daily.introduced} new`,
+  ];
+  $('recap-stats').textContent = parts.join(' · ');
+
+  const list = $('recap-list');
+  list.innerHTML = '';
+  $('recap-title').hidden = summary.missed.length === 0;
+
+  for (const { id, times } of summary.missed.slice(0, MAX_LISTED)) {
+    const card = parseCard(id);
+    // A deck or tense may have been switched off since; skip what we cannot
+    // describe rather than showing a broken row.
+    if (!card.verb) continue;
+    const { question, answer } = cardFaces(card);
+    const row = list.insertRow();
+    const asked = row.insertCell();
+    asked.textContent = question;
+    if (times > 1) {
+      const badge = document.createElement('span');
+      badge.className = 'times';
+      badge.textContent = ` ×${times}`;
+      asked.append(badge);
+    }
+    row.insertCell().textContent = answer;
+  }
+
+  const hidden = Math.max(0, summary.missed.length - MAX_LISTED);
+  $('recap-more').hidden = hidden === 0;
+  $('recap-more').textContent = `and ${hidden} more`;
+}
+
 function renderEmpty() {
   const next = nextDueAt();
   const stillNew = unseen().length;
@@ -223,6 +276,7 @@ function renderEmpty() {
 
   $('add-more').hidden = !hitGoal;
   $('study-anyway').hidden = hitGoal;
+  renderRecap();
 
   if (hitGoal) {
     $('empty-title').textContent = `That is your ${daily.allowance} for today`;
@@ -387,6 +441,9 @@ function grade_(gradeId) {
   }
   progress[id] = review(progress[id] ?? newCardState(), gradeId);
   save(PROGRESS_KEY, progress);
+
+  log = record(rollLog(log, todayKey()), id, gradeId);
+  save(LOG_KEY, log);
 
   // In typing mode the answer itself says whether you were right; in reveal
   // mode the only evidence is how you graded yourself.
@@ -592,6 +649,8 @@ $('reset').addEventListener('click', () => {
   save(PROGRESS_KEY, progress);
   daily = rollOver(null, todayKey(), settings.dailyNew);
   save(DAILY_KEY, daily);
+  log = rollLog(null, todayKey());
+  save(LOG_KEY, log);
   session.seen = 0;
   session.correct = 0;
   commitSettings();
