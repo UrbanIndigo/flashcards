@@ -11,6 +11,7 @@ import {
   DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached,
 } from './daily.js';
 import { rollLog, record, summarise, accuracy, MAX_LISTED } from './recap.js';
+import { ruleFor } from './rules.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 const PROGRESS_KEY = 'conjugaison.progress.v1';
@@ -342,6 +343,9 @@ function renderResult(verdict) {
   // Once the answer is out, grading is the only thing left to do.
   $('reveal').hidden = true;
   $('answer-form').hidden = true;
+  // Why the answer is what it is — the pattern is the transferable part.
+  $('rule').textContent = ruleFor(verb, tense, person);
+
   result.hidden = false;
   renderGrades(verdict);
   $('grades').hidden = false;

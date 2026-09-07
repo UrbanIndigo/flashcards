@@ -251,6 +251,18 @@ button { font: inherit; }
 .answer-note { margin: 8px 0 0; font-size: .82rem; color: var(--ink-faint); }
 .answer-note s { color: var(--bad); text-decoration-thickness: 1px; }
 
+.rule {
+  margin: 18px auto 4px;
+  max-width: 42ch;
+  padding: 11px 14px;
+  background: var(--surface-2);
+  border-radius: 10px;
+  font-size: .82rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
 .paradigm { width: 100%; margin-top: 18px; border-collapse: collapse; font-size: .92rem; }
 .paradigm td { padding: 7px 10px; border-top: 1px solid var(--line); text-align: left; }
 .paradigm td:first-child { color: var(--ink-faint); width: 38%; }
