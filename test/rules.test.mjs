@@ -30,11 +30,37 @@ test('the imparfait rule points at the nous form it is built from', () => {
   assert.match(rule('manger', 'imparfait', 3), /nous mangions.*je mangeais/);
 });
 
+test('the conditionnel explains where its stem came from', () => {
+  // The endings are the easy half; naming the stem is the point. For aller,
+  // "ir-" appears from nowhere unless the note says it has to be learnt.
+  assert.match(rule('aller', 'conditionnel'), /irregular stem \(ir-\).*one to know/);
+  assert.match(rule('être', 'conditionnel'), /irregular stem \(ser-\)/);
+  assert.match(rule('parler', 'conditionnel'), /\(parler-\).*whole infinitive/);
+  assert.match(rule('vendre', 'conditionnel'), /\(vendr-\).*minus its final -e/);
+  // Every one of them still names the endings it shares with the imparfait.
+  for (const inf of ['aller', 'parler', 'vendre', 'acheter', 'finir']) {
+    assert.match(rule(inf, 'conditionnel'), /imparfait endings/, inf);
+  }
+});
+
+test('a stem change is not passed off as an irregular stem', () => {
+  // achèter- is the je-form stem plus -er, not something to memorise;
+  // calling it irregular would teach the reader to ignore the word.
+  for (const inf of ['acheter', 'appeler', 'jeter', 'lever']) {
+    for (const tense of ['futur', 'conditionnel']) {
+      assert.doesNotMatch(rule(inf, tense), /irregular/i, `${inf} / ${tense}`);
+    }
+  }
+  assert.match(rule('acheter', 'futur'), /je-form stem achèt- takes -er/);
+  assert.match(rule('acheter', 'conditionnel'), /built from the je-form achèt-/);
+  // envoyer really is irregular here — enverr- is not envoi- plus -er.
+  assert.match(rule('envoyer', 'futur'), /Irregular stem enverr-/);
+});
+
 test('the futur separates a regular stem from an irregular one', () => {
   assert.match(rule('parler', 'futur'), /whole infinitive \(parler-\)/);
   assert.match(rule('vendre', 'futur'), /minus its final -e \(vendr-\)/);
   assert.match(rule('être', 'futur'), /Irregular stem ser-/);
-  assert.match(rule('conditionnel' in {} ? 'parler' : 'parler', 'conditionnel'), /futur stem \(parler-\).*imparfait endings/);
 });
 
 test('compound tenses name the auxiliary and the agreement', () => {

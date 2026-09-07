@@ -75,19 +75,53 @@ function imparfait(verb, person) {
   return `Take the nous form (nous ${conjugate(verb, 'present')[3]}), drop -ons, add ${ENDINGS.imparfait}.`;
 }
 
-function futur(verb) {
+/**
+ * Where the futur (and so the conditionnel) gets its stem.
+ *
+ * A stem-changing -er verb is not irregular here: achèter- is just the
+ * je-form stem, achèt-, with -er on the end. Calling that irregular would
+ * teach the reader to ignore the word when it means something.
+ */
+function futurStemNote(verb) {
   const stem = futurStem(verb);
-  if (verb.fut) {
-    return `Irregular stem ${stem}-, then the usual ${ENDINGS.futur} — those endings never change.`;
+  if (verb.stems && verb.fut === `${verb.stems.strong}er`) {
+    return { stem, kind: 'stem-change', strong: verb.stems.strong };
   }
-  if (verb.group === 're') {
+  if (verb.fut) return { stem, kind: 'irregular' };
+  if (verb.group === 're') return { stem, kind: 're' };
+  return { stem, kind: 'regular' };
+}
+
+function futur(verb) {
+  const { stem, kind, strong } = futurStemNote(verb);
+  if (kind === 'irregular') {
+    return `Irregular stem ${stem}- — then the usual ${ENDINGS.futur}. Those endings never change.`;
+  }
+  if (kind === 'stem-change') {
+    return `The je-form stem ${strong}- takes -er, giving ${stem}-, plus ${ENDINGS.futur}.`;
+  }
+  if (kind === 're') {
     return `Infinitive minus its final -e (${stem}-), plus ${ENDINGS.futur}.`;
   }
   return `The whole infinitive (${stem}-) plus ${ENDINGS.futur}. Same endings for every verb.`;
 }
 
 function conditionnel(verb) {
-  return `The futur stem (${futurStem(verb)}-) with imparfait endings: ${ENDINGS.imparfait}.`;
+  // The endings are the easy half. Where the stem comes from is the part
+  // worth saying: for aller, "ir-" appears from nowhere unless the note
+  // admits it has to be learnt.
+  const { stem, kind, strong } = futurStemNote(verb);
+  const endings = `with imparfait endings: ${ENDINGS.imparfait}.`;
+  if (kind === 'irregular') {
+    return `The futur's irregular stem (${stem}-) — one to know — ${endings}`;
+  }
+  if (kind === 'stem-change') {
+    return `The futur stem (${stem}-), built from the je-form ${strong}-, ${endings}`;
+  }
+  if (kind === 're') {
+    return `The futur stem (${stem}-), the infinitive minus its final -e, ${endings}`;
+  }
+  return `The futur stem (${stem}-), which is the whole infinitive, ${endings}`;
 }
 
 function compound(verb, person, imperfectAux) {
