@@ -47,9 +47,10 @@
 
     <div class="prompt">
       <p class="prompt-lead" id="prompt-lead">What is the <strong id="prompt-tense">présent</strong> of</p>
-      <p class="prompt-verb">
+      <p class="prompt-verb" id="prompt-main">
         <span id="prompt-pronoun">je</span><span id="prompt-sep"> · </span><span id="prompt-inf">parler</span>
       </p>
+      <p class="sentence" id="prompt-sentence" hidden></p>
     </div>
 
     <!-- Typing mode -->
@@ -68,6 +69,7 @@
       <p id="verdict" class="verdict"></p>
       <p class="answer" id="answer">je parle</p>
       <p class="answer-sub" id="answer-sub" hidden></p>
+      <p class="source" id="answer-source" hidden></p>
       <p class="answer-note" id="answer-note" hidden></p>
       <p class="rule" id="rule"></p>
       <button id="table-toggle" class="link-button" aria-expanded="false">Show the full table</button>
