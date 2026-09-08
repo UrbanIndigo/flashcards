@@ -13,7 +13,38 @@ progress in the browser's `localStorage`.
 | | |
 |---|---|
 | **French verbs** | 88 verbs across 9 tenses, in both directions, plus reading real sentences from novels |
-| **Flags** | 196 countries, flag → country or country → flag, filterable by region |
+| **Geography** | 196 countries — a **Flags** deck and a **Capitals** deck, either direction, filterable by region |
+
+A subject can hold several decks when they share their material. Flags and
+capitals share a country list, a set of regions and a sense of what knowing
+means, so they are two decks of one subject rather than two subjects.
+
+### Flags are images, not emoji
+
+Emoji flags are drawn by the operating system, so they differ between phones,
+and several platforms decline to draw them at all and show the two letters
+instead. The artwork is `flag-icons` (MIT; the flags themselves are public
+symbols), served as **SVG where the design is geometric** and **WebP at
+display resolution where it is an illustrated coat of arms**. Twenty-six
+flags fall in the second group and account for most of the weight: keeping
+them as SVG would cost 1.9MB, and this takes the whole set to about 510KB,
+which is small enough to precache for offline use without a visible
+difference on screen.
+
+### Capitals
+
+Several countries genuinely have more than one capital, and a few have
+moved. Marking a defensible answer wrong teaches nothing, so South Africa
+accepts Pretoria, Cape Town or Bloemfontein; Bolivia takes Sucre or La Paz;
+the Netherlands takes Amsterdam or The Hague; Kazakhstan still accepts
+Nur-Sultan.
+
+Neither punctuation nor accents decide a geography answer, unlike French
+where the accent is part of the word being learnt. *Washington, D.C.* and
+*Washington DC* are the same answer. Accents are subtler: the source data is
+not consistent about them — Colombia's capital arrives as Bogotá and
+Iceland's as Reykjavik — so marking them would penalise *Reykjavík*, which is
+the better spelling of the two.
 
 Each subject owns its own material, its own settings and its own storage, so
 histories never mix and switching between them costs nothing. The daily
@@ -45,9 +76,18 @@ export const capitals = {
 };
 ```
 
-`js/subjects/flags.js` is the short worked example — about 140 lines,
-most of it data plumbing. `js/subjects/french.js` is the awkward one, since
-it generates cards rather than listing them.
+`js/subjects/geography.js` is the short worked example — about 200 lines for
+two decks, most of it wording. `js/subjects/french.js` is the awkward one,
+since it generates cards rather than listing them.
+
+Country data is rebuilt with:
+
+```sh
+node tools/build-geography.mjs > js/subjects/geography-data.js
+```
+
+which also writes `flags/manifest.json`, the list the service worker reads at
+install time so 196 paths do not have to be pasted into it.
 
 ## On your phone, offline
 

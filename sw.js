@@ -32,8 +32,9 @@ const ASSETS = [
   'js/verbs.js',
   'js/subjects/index.js',
   'js/subjects/french.js',
-  'js/subjects/flags.js',
-  'js/subjects/flags-data.js',
+  'js/subjects/geography.js',
+  'js/subjects/geography-data.js',
+  'flags/manifest.json',
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/icon-maskable-512.png',
@@ -41,13 +42,22 @@ const ASSETS = [
   'icons/favicon-32.png',
 ];
 
+/** The flag artwork, listed by the build rather than pasted in here. */
+async function flagAssets() {
+  const response = await fetch('flags/manifest.json', { cache: 'reload' });
+  const files = await response.json();
+  return files.map((file) => `flags/${file}`);
+}
+
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    const assets = [...ASSETS, ...await flagAssets()];
     // `reload` skips the HTTP cache, so a build cannot be precached from a
     // stale copy. addAll is all-or-nothing on purpose: a half-installed
     // version is exactly what this file exists to prevent.
-    ASSETS.map((asset) => new Request(asset, { cache: 'reload' })),
-  )));
+    await cache.addAll(assets.map((asset) => new Request(asset, { cache: 'reload' })));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
