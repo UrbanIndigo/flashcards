@@ -54,6 +54,9 @@ function migrate(stored) {
 }
 
 let settings = migrate(read(SETTINGS_KEY));
+// 'flags' became a deck inside 'geography'; anyone left pointing at it lands
+// in the right place rather than being bounced back to French.
+if (settings.subject === 'flags') settings.subject = 'geography';
 if (!SUBJECTS.some((s) => s.id === settings.subject)) settings.subject = DEFAULT_SETTINGS.subject;
 if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTINGS.dailyNew;
 
@@ -74,6 +77,8 @@ let log;
 
 function loadSubjectState() {
   subject = subjectById(settings.subject);
+  // A subject that has been reorganised can bring its old history with it.
+  subject.migrate?.(read, save);
   const keys = subject.keys(sub());
   progress = read(keys.progress) ?? {};
   daily = rollOver(read(keys.daily), todayKey(), settings.dailyNew);
@@ -291,8 +296,9 @@ function renderResult(verdict) {
 
   const spec = subject.answer(current);
   const answer = $('answer');
-  answer.textContent = spec.answer;
   answer.className = `answer${spec.big ? ' huge' : ''}`;
+  if (spec.answerNodes) answer.replaceChildren(...spec.answerNodes);
+  else answer.textContent = spec.answer;
 
   $('answer-sub').textContent = spec.sub ?? '';
   $('answer-sub').hidden = !spec.sub;

@@ -11,8 +11,8 @@
  */
 
 import { french } from './french.js';
-import { flags } from './flags.js';
+import { geography } from './geography.js';
 
-export const SUBJECTS = [french, flags];
+export const SUBJECTS = [french, geography];
 
 export const subjectById = (id) => SUBJECTS.find((s) => s.id === id) ?? SUBJECTS[0];
