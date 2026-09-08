@@ -1,58 +1,31 @@
-import { VERBS, DECKS, verbsForDeck } from './verbs.js';
-import {
-  conjugate, answerFor, attachPronoun,
-  TENSES, TENSE_IDS, PRONOUN_LABELS, PRONOUNS, tenseLabel,
-} from './conjugator.js';
 import {
   GRADES, TIERS, newCardState, review, isDue, formatDue, tierOf,
 } from './scheduler.js';
-import { checkAnswer, checkRecognition, interpretationsOf } from './answer.js';
 import {
   DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached,
 } from './daily.js';
 import { rollLog, record, summarise, accuracy, MAX_LISTED } from './recap.js';
-import { ruleFor } from './rules.js';
-import { SENTENCES, WORKS } from './sentences.js';
+import { SUBJECTS, subjectById } from './subjects/index.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
-const PROGRESS_KEY = 'conjugaison.progress.v1';
-const DAILY_KEYS = {
-  conjugation: 'conjugaison.daily.v1',
-  reading: 'conjugaison.daily.reading.v1',
-};
-const LOG_KEY = 'conjugaison.log.v1';
 
 const $ = (id) => document.getElementById(id);
 
 const DEFAULT_SETTINGS = {
-  deck: 'core',
-  tenses: ['present', 'passe-compose', 'futur'],
-  pronouns: [0, 1, 2, 3, 4, 5],
-  study: 'conjugation',  // 'conjugation' | 'reading'
-  direction: 'produce', // 'produce' | 'recognise' | 'mix'
-  mode: 'reveal',       // 'reveal' | 'type'
+  subject: 'french',
+  mode: 'reveal', // 'reveal' | 'type'
   dailyNew: DEFAULT_DAILY_NEW,
+  subjects: {},
 };
-
-const STUDY = [
-  ['conjugation', 'Conjugation', 'Drill the forms'],
-  ['reading', 'Reading', 'Sentences from novels'],
-];
-
-const DIRECTIONS = [
-  ['produce', 'Give the form', 'parler → je parle'],
-  ['recognise', 'Name the verb and tense', "j'étais → être, imparfait"],
-  ['mix', 'Mix both', 'alternates between the two'],
-];
 
 // ---------------------------------------------------------------- storage
 
-function load(key, fallback) {
+function read(key) {
   try {
     const raw = localStorage.getItem(key);
-    return raw ? { ...fallback, ...JSON.parse(raw) } : { ...fallback };
+    return raw ? JSON.parse(raw) : null;
   } catch {
-    return { ...fallback };
+    return null;
   }
 }
 
@@ -64,82 +37,62 @@ function save(key, value) {
   }
 }
 
-let settings = load(SETTINGS_KEY, DEFAULT_SETTINGS);
-let progress = load(PROGRESS_KEY, {});
-let daily;
-const loadDaily = () => {
-  daily = rollOver(load(DAILY_KEYS[settings.study], {}), todayKey(), settings.dailyNew);
-};
-const saveDaily = () => save(DAILY_KEYS[settings.study], daily);
-loadDaily();
-let log = rollLog(load(LOG_KEY, {}), todayKey());
-
-// Guard against a stored deck or tense that no longer exists.
-if (!DECKS.some((d) => d.id === settings.deck)) settings.deck = DEFAULT_SETTINGS.deck;
-settings.tenses = settings.tenses.filter((t) => TENSE_IDS.includes(t));
-if (!settings.tenses.length) settings.tenses = [...DEFAULT_SETTINGS.tenses];
-settings.pronouns = settings.pronouns.filter((p) => p >= 0 && p < 6);
-if (!settings.pronouns.length) settings.pronouns = [...DEFAULT_SETTINGS.pronouns];
-if (!DIRECTIONS.some(([id]) => id === settings.direction)) settings.direction = DEFAULT_SETTINGS.direction;
-if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTINGS.dailyNew;
-if (!STUDY.some(([id]) => id === settings.study)) settings.study = DEFAULT_SETTINGS.study;
-
-// ------------------------------------------------------------------ cards
-
-// A forward card keeps its three-part id, so review history recorded before
-// reverse cards existed still matches; reverse cards get a "|r" suffix and
-// are scheduled independently.
-const SENTENCE_BY_ID = new Map(SENTENCES.map((sentence) => [sentence.id, sentence]));
-
-const cardId = (inf, tense, person, direction) =>
-  `${inf}|${tense}|${person}${direction === 'recognise' ? '|r' : ''}`;
-
-function parseCard(id) {
-  if (id.startsWith('sentence|')) {
-    const sentence = SENTENCE_BY_ID.get(id.slice('sentence|'.length));
-    if (!sentence) return { verb: undefined };
-    return {
-      verb: VERBS.find((v) => v.inf === sentence.inf),
-      tense: sentence.tense,
-      person: sentence.person,
-      direction: 'reading',
-      sentence,
-    };
-  }
-  const [inf, tense, person, reverse] = id.split('|');
+/**
+ * Settings used to be flat, because there was only ever one subject. Anything
+ * saved in that shape belongs to French, so it is moved rather than dropped.
+ */
+function migrate(stored) {
+  if (!stored) return { ...DEFAULT_SETTINGS, subjects: {} };
+  if (stored.subjects) return { ...DEFAULT_SETTINGS, ...stored };
+  const { deck, tenses, pronouns, study, direction, ...rest } = stored;
   return {
-    verb: VERBS.find((v) => v.inf === inf),
-    tense,
-    person: Number(person),
-    direction: reverse === 'r' ? 'recognise' : 'produce',
+    ...DEFAULT_SETTINGS,
+    ...rest,
+    subject: 'french',
+    subjects: { french: { deck, tenses, pronouns, study, direction } },
   };
 }
 
-function directions() {
-  return settings.direction === 'mix' ? ['produce', 'recognise'] : [settings.direction];
+let settings = migrate(read(SETTINGS_KEY));
+if (!SUBJECTS.some((s) => s.id === settings.subject)) settings.subject = DEFAULT_SETTINGS.subject;
+if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTINGS.dailyNew;
+
+let subject = subjectById(settings.subject);
+
+/** This subject's own slice of the settings. */
+function sub() {
+  const existing = settings.subjects[subject.id];
+  const state = { ...subject.defaults, ...(existing ?? {}) };
+  subject.normalise(state);
+  settings.subjects[subject.id] = state;
+  return state;
 }
 
+let progress;
+let daily;
+let log;
+
+function loadSubjectState() {
+  subject = subjectById(settings.subject);
+  const keys = subject.keys(sub());
+  progress = read(keys.progress) ?? {};
+  daily = rollOver(read(keys.daily), todayKey(), settings.dailyNew);
+  log = rollLog(read(keys.log), todayKey());
+}
+
+const saveProgress = () => save(subject.keys(sub()).progress, progress);
+const saveDaily = () => save(subject.keys(sub()).daily, daily);
+const saveLog = () => save(subject.keys(sub()).log, log);
+
+loadSubjectState();
+// Write the migrated shape back once, so old flat settings are converted
+// rather than re-migrated on every load.
+save(SETTINGS_KEY, settings);
+
+// ------------------------------------------------------------------ cards
+
 function pool() {
-  const ids = [];
-  if (settings.study === 'reading') {
-    // Sentence cards are not verb x tense x pronoun combinations, so the
-    // pronoun filter has nothing to say about them; deck and tense still do.
-    const inDeck = new Set(verbsForDeck(settings.deck).map((v) => v.inf));
-    for (const sentence of SENTENCES) {
-      if (settings.tenses.includes(sentence.tense) && inDeck.has(sentence.inf)) {
-        ids.push(`sentence|${sentence.id}`);
-      }
-    }
-    return ids;
-  }
-  for (const verb of verbsForDeck(settings.deck)) {
-    for (const tense of settings.tenses) {
-      for (const person of settings.pronouns) {
-        for (const direction of directions()) ids.push(cardId(verb.inf, tense, person, direction));
-      }
-    }
-  }
-  return ids;
+  return subject.cardIds(sub());
 }
 
 function shuffle(items) {
@@ -157,6 +110,7 @@ let queue = [];
 let current = null;
 let answered = false;
 let lastVerdict = null;
+let pendingExtra = null;
 const session = { seen: 0, correct: 0 };
 let forceStudy = false;
 
@@ -185,11 +139,11 @@ function nextDueAt() {
   return times.length ? Math.min(...times) : null;
 }
 
-function newTodayLabel() {
-  return `${daily.introduced}/${daily.allowance}`;
-}
-
 // -------------------------------------------------------------- rendering
+
+function typingAllowed() {
+  return settings.mode === 'type' && (subject.typable?.(current) ?? true);
+}
 
 function renderCard() {
   const card = $('card');
@@ -209,81 +163,47 @@ function renderCard() {
   card.hidden = false;
   answered = false;
   lastVerdict = null;
-  current = parseCard(queue[0]);
+  pendingExtra = null;
+  current = subject.parse(queue[0]);
 
-  const { verb, tense, person, direction } = current;
-  const reverse = direction !== 'produce';
-  const lead = $('prompt-lead');
-  lead.textContent = '';
-  $('prompt-main').hidden = direction === 'reading';
-  $('prompt-sentence').hidden = direction !== 'reading';
-
-  if (direction === 'reading') {
-    const { text, start, end } = current.sentence;
-    $('card-tense').textContent = 'In a sentence';
-    $('card-gloss').hidden = true;
-    lead.textContent = 'Which verb is this, and which tense?';
-    const target = document.createElement('mark');
-    target.textContent = text.slice(start, end);
-    $('prompt-sentence').replaceChildren(text.slice(0, start), target, text.slice(end));
-  } else if (reverse) {
-    // Naming the tense would give half the answer away, so a reverse card
-    // shows the bare form and nothing else.
-    $('card-tense').textContent = 'Verb and tense?';
-    $('card-gloss').hidden = true;
-    lead.textContent = 'Which verb is this, and which tense?';
-    $('prompt-pronoun').hidden = true;
-    $('prompt-sep').hidden = true;
-    $('prompt-inf').textContent = answerFor(verb, tense, person);
-  } else {
-    $('card-tense').textContent = tenseLabel(tense);
-    $('card-gloss').hidden = false;
-    $('card-gloss').textContent = verb.en;
-    const strong = document.createElement('strong');
-    strong.id = 'prompt-tense';
-    strong.textContent = tenseLabel(tense).toLowerCase();
-    lead.append('What is the ', strong, ' of');
-    $('prompt-pronoun').hidden = false;
-    $('prompt-pronoun').textContent = PRONOUN_LABELS[person];
-    $('prompt-sep').hidden = false;
-    $('prompt-inf').textContent = verb.inf;
+  // A card can outlive the data that described it — a regenerated corpus, a
+  // dropped verb. Skip it rather than rendering a broken prompt.
+  if (!current) {
+    queue.shift();
+    renderCard();
+    return;
   }
 
-  const typing = settings.mode === 'type';
+  const spec = subject.prompt(current);
+  $('card-tense').textContent = spec.pill;
+  $('card-gloss').hidden = !spec.gloss;
+  if (spec.gloss) $('card-gloss').textContent = spec.gloss;
+
+  const lead = $('prompt-lead');
+  lead.textContent = '';
+  if (Array.isArray(spec.lead)) lead.append(...spec.lead);
+  else lead.textContent = spec.lead ?? '';
+
+  const body = $('prompt-body');
+  body.className = `prompt-body${spec.prose ? ' prose' : ''}`;
+  body.replaceChildren(...spec.nodes);
+
+  const typing = typingAllowed();
   $('answer-form').hidden = !typing;
   $('reveal').hidden = typing;
-  $('answer-input').placeholder = reverse ? 'verb and tense…' : 'type the form…';
+  $('answer-input').placeholder = subject.placeholder?.(current) ?? '';
+  $('answer-input').value = '';
   $('answer-sub').hidden = true;
+  $('answer-source').hidden = true;
+  $('answer-note').hidden = true;
   $('result').hidden = true;
   $('grades').hidden = true;
-  $('paradigm').hidden = true;
-  $('table-toggle').setAttribute('aria-expanded', 'false');
-  $('table-toggle').textContent = 'Show the full table';
-  $('answer-note').hidden = true;
-  $('answer-input').value = '';
+  $('extra').hidden = true;
+  $('extra-toggle').hidden = true;
+  $('extra-toggle').setAttribute('aria-expanded', 'false');
 
   if (typing) $('answer-input').focus();
   updateStats();
-}
-
-/**
- * Two different endings: you have hit the day's target and could choose to
- * go on, or the deck genuinely has nothing left to show you.
- */
-/** What a card asks and what it answers, whichever way round it runs. */
-function cardFaces({ verb, tense, person, direction, sentence }) {
-  const solution = answerFor(verb, tense, person);
-  if (direction === 'reading') {
-    return {
-      question: sentence.text.slice(sentence.start, sentence.end),
-      answer: `${verb.inf} · ${tenseLabel(tense).toLowerCase()}`,
-    };
-  }
-  if (direction === 'recognise') return { question: solution, answer: verb.inf };
-  return {
-    question: `${verb.inf} · ${tenseLabel(tense).toLowerCase()} · ${PRONOUN_LABELS[person]}`,
-    answer: solution,
-  };
 }
 
 function renderRecap() {
@@ -292,23 +212,22 @@ function renderRecap() {
   box.hidden = summary.answered === 0;
   if (box.hidden) return;
 
-  const parts = [
+  $('recap-stats').textContent = [
     `${summary.answered} answered`,
     `${summary.right} right (${accuracy(summary)}%)`,
     `${daily.introduced} new`,
-  ];
-  $('recap-stats').textContent = parts.join(' · ');
+  ].join(' · ');
 
   const list = $('recap-list');
   list.innerHTML = '';
   $('recap-title').hidden = summary.missed.length === 0;
 
   for (const { id, times } of summary.missed.slice(0, MAX_LISTED)) {
-    const card = parseCard(id);
+    const card = subject.parse(id);
     // A deck or tense may have been switched off since; skip what we cannot
     // describe rather than showing a broken row.
-    if (!card.verb) continue;
-    const { question, answer } = cardFaces(card);
+    if (!card) continue;
+    const { question, answer } = subject.faces(card);
     const row = list.insertRow();
     const asked = row.insertCell();
     asked.textContent = question;
@@ -326,6 +245,10 @@ function renderRecap() {
   $('recap-more').textContent = `and ${hidden} more`;
 }
 
+/**
+ * Two different endings: you have hit the day's target and could choose to
+ * go on, or the deck genuinely has nothing left to show you.
+ */
 function renderEmpty() {
   const next = nextDueAt();
   const stillNew = unseen().length;
@@ -349,7 +272,7 @@ function renderEmpty() {
   $('empty-title').textContent = 'All caught up';
   $('empty-body').textContent = next
     ? `Nothing is due right now. The next card is back ${formatDue(next)}.`
-    : 'Pick a deck or a tense in Settings to start reviewing.';
+    : 'Pick a deck in Settings to start reviewing.';
 }
 
 function renderResult(verdict) {
@@ -357,10 +280,7 @@ function renderResult(verdict) {
   answered = true;
   lastVerdict = verdict;
 
-  const { verb, tense, person } = current;
-  const result = $('result');
   const verdictEl = $('verdict');
-
   if (verdict === null) {
     verdictEl.textContent = '';
     verdictEl.className = 'verdict';
@@ -369,35 +289,17 @@ function renderResult(verdict) {
     verdictEl.className = `verdict ${verdict.level}`;
   }
 
-  const sub = $('answer-sub');
-  const source = $('answer-source');
-  source.hidden = true;
+  const spec = subject.answer(current);
+  const answer = $('answer');
+  answer.textContent = spec.answer;
+  answer.className = `answer${spec.big ? ' huge' : ''}`;
 
-  if (current.direction === 'reading') {
-    const { work, chapter } = current.sentence;
-    $('answer').textContent = verb.inf;
-    sub.textContent = `${tenseLabel(tense)} · ${verb.en}`;
-    sub.hidden = false;
-    const { title, author } = WORKS[work];
-    source.textContent = `${title}${chapter ? `, ch. ${chapter}` : ''} — ${author}`;
-    source.hidden = false;
-  } else if (current.direction === 'recognise') {
-    $('answer').textContent = verb.inf;
-    // "je suis" is also suivre; "je finis" is also a passé simple. Naming the
-    // other readings is the point, not a footnote — it is what makes a form
-    // ambiguous on the page of a book.
-    const others = interpretationsOf(answerFor(verb, tense, person), person)
-      .filter((o) => !(o.inf === verb.inf && o.tense === tense))
-      .map((o) => (o.inf === verb.inf
-        ? tenseLabel(o.tense).toLowerCase()
-        : `${o.inf} (${tenseLabel(o.tense).toLowerCase()})`));
-    sub.textContent = `${tenseLabel(tense)} · ${verb.en}`
-      + (others.length ? ` — also ${others.join(', ')}` : '');
-    sub.hidden = false;
-  } else {
-    $('answer').textContent = answerFor(verb, tense, person);
-    sub.hidden = true;
-  }
+  $('answer-sub').textContent = spec.sub ?? '';
+  $('answer-sub').hidden = !spec.sub;
+  $('answer-source').textContent = spec.source ?? '';
+  $('answer-source').hidden = !spec.source;
+  $('rule').textContent = spec.note ?? '';
+  $('rule').hidden = !spec.note;
 
   const note = $('answer-note');
   const typed = $('answer-input').value.trim();
@@ -412,13 +314,15 @@ function renderResult(verdict) {
     note.hidden = true;
   }
 
+  pendingExtra = subject.extra?.(current) ?? null;
+  $('extra-toggle').hidden = !pendingExtra;
+  if (pendingExtra) $('extra-toggle').textContent = `Show ${pendingExtra.label}`;
+
   // Once the answer is out, grading is the only thing left to do.
   $('reveal').hidden = true;
   $('answer-form').hidden = true;
-  // Why the answer is what it is — the pattern is the transferable part.
-  $('rule').textContent = ruleFor(verb, tense, person);
 
-  result.hidden = false;
+  $('result').hidden = false;
   renderGrades(verdict);
   $('grades').hidden = false;
   updateStats();
@@ -426,7 +330,7 @@ function renderResult(verdict) {
 
 function renderGrades(verdict) {
   const box = $('grades');
-  // An accent slip is still the wrong form, so it suggests Again rather than
+  // A near miss is still not the answer, so it suggests Again rather than
   // waving it through.
   const suggested = { correct: 1, close: 0, wrong: 0 }[verdict?.level] ?? null;
 
@@ -440,19 +344,6 @@ function renderGrades(verdict) {
     button.addEventListener('click', () => grade_(grade.id));
     box.append(button);
   }
-}
-
-function renderParadigm() {
-  const { verb, tense, person } = current;
-  const forms = conjugate(verb, tense);
-  const table = $('paradigm');
-  table.innerHTML = '';
-  forms.forEach((form, i) => {
-    const row = table.insertRow();
-    if (i === person) row.className = 'current';
-    row.insertCell().textContent = PRONOUN_LABELS[i];
-    row.insertCell().textContent = attachPronoun(form, i, tense);
-  });
 }
 
 // ---------------------------------------------------------- progress bar
@@ -500,7 +391,7 @@ function updateProgressBar() {
 function updateStats() {
   $('stat-seen').textContent = session.seen;
   $('stat-correct').textContent = session.seen ? `${session.correct}/${session.seen}` : '0';
-  $('stat-new').textContent = newTodayLabel();
+  $('stat-new').textContent = `${daily.introduced}/${daily.allowance}`;
   updateProgressBar();
 }
 
@@ -516,10 +407,10 @@ function grade_(gradeId) {
     saveDaily();
   }
   progress[id] = review(progress[id] ?? newCardState(), gradeId);
-  save(PROGRESS_KEY, progress);
+  saveProgress();
 
   log = record(rollLog(log, todayKey()), id, gradeId);
-  save(LOG_KEY, log);
+  saveLog();
 
   // In typing mode the answer itself says whether you were right; in reveal
   // mode the only evidence is how you graded yourself.
@@ -540,9 +431,8 @@ function grade_(gradeId) {
 
 function reveal() {
   if (answered) return;
-  if (settings.mode !== 'type') return renderResult(null);
-  const check = current.direction === 'produce' ? checkAnswer : checkRecognition;
-  renderResult(check($('answer-input').value, current));
+  if (!typingAllowed()) return renderResult(null);
+  renderResult(subject.check($('answer-input').value, current));
 }
 
 // ---------------------------------------------------------------- settings
@@ -568,59 +458,68 @@ function option({ type, name, label, hint, checked, onChange }) {
   return wrap;
 }
 
-/** Keep at least one box ticked, so the deck can never become empty. */
+/** Keep at least one box ticked, so a deck can never become empty. */
 function toggleIn(list, value, on) {
   const next = on ? [...new Set([...list, value])] : list.filter((v) => v !== value);
   return next.length ? next : list;
 }
 
+/** Whatever groups the current subject asks for, rendered generically. */
+function renderSubjectFilters() {
+  const box = $('subject-filters');
+  box.innerHTML = '';
+  const state = sub();
+
+  for (const filter of subject.filters(state)) {
+    const fieldset = document.createElement('fieldset');
+    const legend = document.createElement('legend');
+    legend.textContent = filter.legend;
+    const options = document.createElement('div');
+    options.className = `options${filter.chips ? ' pronouns' : ''}`;
+
+    for (const choice of filter.options) {
+      const checked = filter.type === 'radio'
+        ? state[filter.id] === choice.value
+        : (state[filter.id] ?? []).includes(choice.value);
+      options.append(option({
+        type: filter.type,
+        name: `${subject.id}-${filter.id}`,
+        label: choice.label,
+        hint: choice.hint,
+        checked,
+        onChange: (on) => {
+          if (filter.type === 'radio') {
+            if (!on) return;
+            state[filter.id] = choice.value;
+          } else {
+            state[filter.id] = toggleIn(state[filter.id] ?? [], choice.value, on);
+          }
+          settings.subjects[subject.id] = state;
+          commitSettings();
+        },
+      }));
+    }
+    fieldset.append(legend, options);
+    box.append(fieldset);
+  }
+}
+
 function renderSettings() {
-  const studies = $('study-options');
-  studies.innerHTML = '';
-  for (const [id, label, hint] of STUDY) {
-    studies.append(option({
-      type: 'radio', name: 'study', label, hint,
-      checked: settings.study === id,
-      onChange: (on) => { if (on) { settings.study = id; commitSettings(); } },
+  const subjects = $('subject-options');
+  subjects.innerHTML = '';
+  for (const candidate of SUBJECTS) {
+    subjects.append(option({
+      type: 'radio', name: 'subject', label: candidate.label, hint: candidate.hint,
+      checked: settings.subject === candidate.id,
+      onChange: (on) => {
+        if (!on) return;
+        settings.subject = candidate.id;
+        commitSettings();
+      },
     }));
   }
 
-  // Direction and pronouns describe conjugation cards; a sentence has
-  // already chosen both for you.
-  const reading = settings.study === 'reading';
-  $('direction-group').hidden = reading;
-  $('pronoun-group').hidden = reading;
-
-  const decks = $('deck-options');
-  decks.innerHTML = '';
-  for (const deck of DECKS) {
-    const count = verbsForDeck(deck.id).length;
-    decks.append(option({
-      type: 'radio', name: 'deck', label: deck.label, hint: `${count} verbs`,
-      checked: settings.deck === deck.id,
-      onChange: (on) => { if (on) { settings.deck = deck.id; commitSettings(); } },
-    }));
-  }
-
-  const tenses = $('tense-options');
-  tenses.innerHTML = '';
-  for (const tense of TENSES) {
-    tenses.append(option({
-      type: 'checkbox', name: 'tense', label: tense.label, hint: tense.hint,
-      checked: settings.tenses.includes(tense.id),
-      onChange: (on) => { settings.tenses = toggleIn(settings.tenses, tense.id, on); commitSettings(); },
-    }));
-  }
-
-  const pronouns = $('pronoun-options');
-  pronouns.innerHTML = '';
-  PRONOUN_LABELS.forEach((label, i) => {
-    pronouns.append(option({
-      type: 'checkbox', name: 'pronoun', label,
-      checked: settings.pronouns.includes(i),
-      onChange: (on) => { settings.pronouns = toggleIn(settings.pronouns, i, on); commitSettings(); },
-    }));
-  });
+  renderSubjectFilters();
 
   const goals = $('goal-options');
   goals.innerHTML = '';
@@ -639,16 +538,6 @@ function renderSettings() {
     }));
   }
 
-  const dirs = $('direction-options');
-  dirs.innerHTML = '';
-  for (const [id, label, hint] of DIRECTIONS) {
-    dirs.append(option({
-      type: 'radio', name: 'direction', label, hint,
-      checked: settings.direction === id,
-      onChange: (on) => { if (on) { settings.direction = id; commitSettings(); } },
-    }));
-  }
-
   const modes = $('mode-options');
   modes.innerHTML = '';
   for (const [id, label, hint] of [
@@ -663,14 +552,18 @@ function renderSettings() {
   }
 
   const studied = Object.keys(progress).length;
+
   $('progress-summary').textContent = studied
-    ? `${studied} card${studied === 1 ? '' : 's'} in your review history.`
-    : 'No progress saved yet.';
+    ? `${studied} card${studied === 1 ? '' : 's'} in your ${subject.label} history.`
+    : `No progress saved for ${subject.label} yet.`;
+  $('reset').textContent = `Reset ${subject.label}`;
 }
 
 function commitSettings() {
   save(SETTINGS_KEY, settings);
-  loadDaily();
+  loadSubjectState();
+  buildAccentBar();
+  updateTagline();
   forceStudy = false;
   queue = [];
   renderSettings();
@@ -688,7 +581,10 @@ function openSettings(open) {
 
 function buildAccentBar() {
   const bar = $('accents');
-  for (const char of ['é', 'è', 'ê', 'à', 'â', 'î', 'ô', 'û', 'ç']) {
+  bar.innerHTML = '';
+  const accents = subject.accents ?? [];
+  bar.hidden = accents.length === 0;
+  for (const char of accents) {
     const button = document.createElement('button');
     button.type = 'button';
     button.textContent = char;
@@ -707,13 +603,19 @@ function buildAccentBar() {
 $('reveal').addEventListener('click', reveal);
 $('answer-form').addEventListener('submit', (event) => { event.preventDefault(); reveal(); });
 
-$('table-toggle').addEventListener('click', () => {
-  const table = $('paradigm');
-  const showing = table.hidden;
-  if (showing) renderParadigm();
-  table.hidden = !showing;
-  $('table-toggle').setAttribute('aria-expanded', String(showing));
-  $('table-toggle').textContent = showing ? 'Hide the full table' : 'Show the full table';
+$('extra-toggle').addEventListener('click', () => {
+  const box = $('extra');
+  const showing = box.hidden;
+  if (showing && pendingExtra) box.replaceChildren(pendingExtra.node);
+  box.hidden = !showing;
+  $('extra-toggle').setAttribute('aria-expanded', String(showing));
+  $('extra-toggle').textContent = `${showing ? 'Hide' : 'Show'} ${pendingExtra?.label ?? ''}`;
+});
+
+$('study-anyway').addEventListener('click', () => {
+  forceStudy = true;
+  queue = buildQueue();
+  renderCard();
 });
 
 for (const button of document.querySelectorAll('.add')) {
@@ -726,24 +628,15 @@ for (const button of document.querySelectorAll('.add')) {
   });
 }
 
-$('study-anyway').addEventListener('click', () => {
-  forceStudy = true;
-  queue = buildQueue();
-  renderCard();
-});
-
 $('settings-toggle').addEventListener('click', () => openSettings($('settings').hidden));
 $('settings-close').addEventListener('click', () => openSettings(false));
 $('settings-backdrop').addEventListener('click', () => openSettings(false));
 
 $('reset').addEventListener('click', () => {
-  if (!confirm('Delete your review history and start over?')) return;
-  progress = {};
-  save(PROGRESS_KEY, progress);
-  for (const key of Object.values(DAILY_KEYS)) save(key, rollOver(null, todayKey(), settings.dailyNew));
-  loadDaily();
-  log = rollLog(null, todayKey());
-  save(LOG_KEY, log);
+  if (!confirm(`Delete your ${subject.label} history and start over?`)) return;
+  for (const key of subject.storageKeys(sub())) {
+    try { localStorage.removeItem(key); } catch { /* nothing to do */ }
+  }
   session.seen = 0;
   session.correct = 0;
   commitSettings();
@@ -787,7 +680,13 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+/** The header should say what you are actually studying. */
+function updateTagline() {
+  $('tagline').textContent = `${subject.label} · ${subject.hint}`;
+}
+
 buildAccentBar();
+updateTagline();
 buildProgressBar();
 renderSettings();
 renderCard();

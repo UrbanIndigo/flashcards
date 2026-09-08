@@ -1,15 +1,53 @@
 # Conjugaison
 
-Flashcards for French verb conjugations. A card asks you for one form —
-
-> What is the **passé composé** of *nous · aller*?
-
-— you recall it, reveal the answer, and say how well you knew it. Cards you
-miss come back sooner than cards you know.
+A spaced-repetition flashcard app. It began as French verb conjugation and
+still does that best, but the material is now pluggable: **French verbs** and
+**flags of the world** ship with it, and a new subject is one file.
 
 It installs to a phone home screen and works with no internet. No build step,
 no dependencies, no accounts: plain HTML, CSS and ES modules, with your
 progress in the browser's `localStorage`.
+
+## Subjects
+
+| | |
+|---|---|
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus reading real sentences from novels |
+| **Flags** | 196 countries, flag → country or country → flag, filterable by region |
+
+Each subject owns its own material, its own settings and its own storage, so
+histories never mix and switching between them costs nothing. The daily
+allowance is counted per subject too: an evening on flags does not eat the
+French twenty.
+
+### Adding a subject
+
+A subject is an object in `js/subjects/`. It says which cards exist, how one
+is worded, and what counts as an answer; the app supplies everything else —
+the queue, the schedule, the daily allowance, the progress bar and the recap.
+
+```js
+export const capitals = {
+  id: 'capitals',
+  label: 'Capital cities',
+  hint: '196 countries',
+  defaults: { regions: [...] },
+  keys: () => ({ progress: '…', daily: '…', log: '…' }),
+  storageKeys: () => [ … ],
+  normalise(s) { … },              // clamp anything stale in saved settings
+  filters(s) { … },                // the settings groups this subject wants
+  cardIds(s) { … },                // which cards exist right now
+  parse(id) { … },                 // an id back into a card, or null
+  prompt(card) { … },              // { pill, lead, nodes }
+  answer(card) { … },              // { answer, sub?, source?, note? }
+  faces(card) { … },               // how it reads in the recap
+  check(input, card) { … },        // a verdict, or null if not typable
+};
+```
+
+`js/subjects/flags.js` is the short worked example — about 140 lines,
+most of it data plumbing. `js/subjects/french.js` is the awkward one, since
+it generates cards rather than listing them.
 
 ## On your phone, offline
 

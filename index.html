@@ -23,7 +23,7 @@
 <header class="topbar">
   <div class="brand">
     <h1>Conjugaison</h1>
-    <p class="tagline">French verb flashcards</p>
+    <p class="tagline" id="tagline"></p>
   </div>
   <div class="topbar-right">
     <dl class="stats" aria-label="Session progress">
@@ -46,11 +46,8 @@
     </div>
 
     <div class="prompt">
-      <p class="prompt-lead" id="prompt-lead">What is the <strong id="prompt-tense">présent</strong> of</p>
-      <p class="prompt-verb" id="prompt-main">
-        <span id="prompt-pronoun">je</span><span id="prompt-sep"> · </span><span id="prompt-inf">parler</span>
-      </p>
-      <p class="sentence" id="prompt-sentence" hidden></p>
+      <p class="prompt-lead" id="prompt-lead"></p>
+      <p class="prompt-body" id="prompt-body"></p>
     </div>
 
     <!-- Typing mode -->
@@ -72,8 +69,8 @@
       <p class="source" id="answer-source" hidden></p>
       <p class="answer-note" id="answer-note" hidden></p>
       <p class="rule" id="rule"></p>
-      <button id="table-toggle" class="link-button" aria-expanded="false">Show the full table</button>
-      <table id="paradigm" class="paradigm" hidden></table>
+      <button id="extra-toggle" class="link-button" aria-expanded="false" hidden></button>
+      <div id="extra" hidden></div>
     </div>
 
     <div id="grades" class="grades" hidden role="group" aria-label="How well did you know it?"></div>
@@ -118,33 +115,16 @@
     </div>
 
     <fieldset>
-      <legend>Study</legend>
-      <div id="study-options" class="options"></div>
+      <legend>Subject</legend>
+      <div id="subject-options" class="options"></div>
     </fieldset>
 
-    <fieldset>
-      <legend>Deck</legend>
-      <div id="deck-options" class="options"></div>
-    </fieldset>
-
-    <fieldset>
-      <legend>Tenses</legend>
-      <div id="tense-options" class="options"></div>
-    </fieldset>
-
-    <fieldset id="pronoun-group">
-      <legend>Pronouns</legend>
-      <div id="pronoun-options" class="options pronouns"></div>
-    </fieldset>
+    <!-- Filled in by whichever subject is selected. -->
+    <div id="subject-filters"></div>
 
     <fieldset>
       <legend>New cards a day</legend>
       <div id="goal-options" class="options pronouns"></div>
-    </fieldset>
-
-    <fieldset id="direction-group">
-      <legend>Direction</legend>
-      <div id="direction-options" class="options"></div>
     </fieldset>
 
     <fieldset>
