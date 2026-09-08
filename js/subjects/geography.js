@@ -1,9 +1,13 @@
 /**
- * Geography: flags and capitals.
+ * Geography: flags, capitals, and whatever else gets added.
  *
- * One subject with several decks, rather than one subject per deck — they
- * share a country list, a set of regions and a sense of what "knowing" means,
- * so splitting them would only mean repeating all three.
+ * One subject with several decks that can be studied together, rather than
+ * one subject per deck — they share a country list, a set of regions and a
+ * sense of what "knowing" means, so splitting them would repeat all three.
+ *
+ * Each deck is a self-contained definition below: its two directions, how a
+ * card is worded, and what counts as an answer. Adding another kind of
+ * question means adding one entry to DECKS and nothing else.
  *
  * Flags are images rather than emoji. Emoji flags are drawn by the operating
  * system, so they differ between phones, and several platforms decline to
@@ -12,27 +16,6 @@
 
 import { COUNTRIES, REGIONS } from './geography-data.js';
 import { deaccent } from '../answer.js';
-
-const DECKS = [
-  ['flags', 'Flags', '196 flags'],
-  ['capitals', 'Capitals', '196 capitals'],
-];
-
-/** What each direction is called depends on which deck you are in. */
-const DIRECTIONS = {
-  flags: [
-    ['forward', 'Name the country', 'flag → country'],
-    ['reverse', 'Recall the flag', 'country → flag'],
-    ['mix', 'Mix both', 'alternates between the two'],
-  ],
-  capitals: [
-    ['forward', 'Name the capital', 'country → capital'],
-    ['reverse', 'Name the country', 'capital → country'],
-    ['mix', 'Mix both', 'alternates between the two'],
-  ],
-};
-
-const BY_CODE = new Map(COUNTRIES.map((country) => [country.code, country]));
 
 const CORRECT = { level: 'correct', message: 'Correct' };
 const WRONG = { level: 'wrong', message: 'Not quite' };
@@ -54,6 +37,15 @@ function graded(input, accepted) {
   return accepted.some((a) => bare(a) === bare(input)) ? CORRECT : WRONG;
 }
 
+const countryNames = (country) => [country.name, ...(country.aka ?? [])];
+const capitalNames = (country) => [country.capital, ...(country.capitalAka ?? [])];
+
+function textNode(value) {
+  const node = document.createElement('span');
+  node.textContent = value;
+  return node;
+}
+
 function flagImage(country, className) {
   const img = document.createElement('img');
   img.className = className;
@@ -65,11 +57,73 @@ function flagImage(country, className) {
   return img;
 }
 
-const textNode = (value) => {
-  const node = document.createElement('span');
-  node.textContent = value;
-  return node;
-};
+/**
+ * The decks. `prefix` and `reverseMark` build the card ids: flags use a bare
+ * country code and a "|n" suffix, which is what they used when flags was its
+ * own subject, so that history still matches. Anything added later gets a
+ * prefix of its own.
+ */
+const DECKS = [
+  {
+    id: 'flags',
+    label: 'Flags',
+    hint: '196 flags',
+    prefix: '',
+    reverseMark: 'n',
+    forward: {
+      label: 'Name the country',
+      hint: 'flag → country',
+      placeholder: 'country…',
+      prompt: (c) => ({ pill: 'Which country?', lead: 'Whose flag is this?', nodes: [flagImage(c, 'flag-prompt')] }),
+      answer: (c) => ({ answer: c.name, sub: `capital: ${c.capital} · ${c.region}` }),
+      faces: (c) => ({ question: `${c.name}'s flag`, answer: c.name }),
+      check: (input, c) => graded(input, countryNames(c)),
+    },
+    reverse: {
+      label: 'Recall the flag',
+      hint: 'country → flag',
+      // Nobody types a flag, so this direction is always self-graded.
+      placeholder: '',
+      prompt: (c) => ({ pill: 'Which flag?', lead: 'What flag does this country fly?', nodes: [textNode(c.name)] }),
+      answer: (c) => ({ answerNodes: [flagImage(c, 'flag-answer')], sub: `${c.name} · ${c.region}` }),
+      faces: (c) => ({ question: c.name, answer: '(its flag)' }),
+      check: null,
+    },
+  },
+  {
+    id: 'capitals',
+    label: 'Capitals',
+    hint: '196 capitals',
+    prefix: 'cap',
+    reverseMark: 'r',
+    forward: {
+      label: 'Name the capital',
+      hint: 'country → capital',
+      placeholder: 'capital…',
+      prompt: (c) => ({ pill: 'Which capital?', lead: 'What is the capital of', nodes: [textNode(c.name)] }),
+      answer: (c) => ({ answer: c.capital, sub: `${c.name} · ${c.region}` }),
+      faces: (c) => ({ question: c.name, answer: c.capital }),
+      check: (input, c) => graded(input, capitalNames(c)),
+    },
+    reverse: {
+      label: 'Name the country',
+      hint: 'capital → country',
+      placeholder: 'country…',
+      prompt: (c) => ({ pill: 'Which country?', lead: 'Which country has this capital?', nodes: [textNode(c.capital)] }),
+      answer: (c) => ({ answer: c.name, sub: `capital: ${c.capital} · ${c.region}` }),
+      faces: (c) => ({ question: c.capital, answer: c.name }),
+      check: (input, c) => graded(input, countryNames(c)),
+    },
+  },
+];
+
+const DECK_BY_ID = new Map(DECKS.map((deck) => [deck.id, deck]));
+const BY_CODE = new Map(COUNTRIES.map((country) => [country.code, country]));
+
+const cardId = (deck, code, direction) => [deck.prefix, code, direction === 'reverse' ? deck.reverseMark : '']
+  .filter(Boolean).join('|');
+
+const DIRECTIONS = ['forward', 'reverse', 'mix'];
 
 export const geography = {
   id: 'geography',
@@ -77,7 +131,7 @@ export const geography = {
   hint: 'Flags and capitals',
 
   defaults: {
-    deck: 'flags',
+    decks: ['flags'],
     regions: [...REGIONS],
     direction: 'forward',
   },
@@ -111,19 +165,41 @@ export const geography = {
   },
 
   normalise(s) {
-    if (!DECKS.some(([id]) => id === s.deck)) s.deck = this.defaults.deck;
+    // A single deck used to be chosen with a radio. That key only exists in
+    // settings saved before decks could be mixed, so where it is still
+    // present it wins outright — the subject's defaults are merged in before
+    // this runs, so `decks` is always set by then and testing for its absence
+    // would silently reset anyone who had picked capitals. Removing it means
+    // it can only win once.
+    if (s.deck) {
+      s.decks = [s.deck];
+      delete s.deck;
+    }
+
+    s.decks = (s.decks ?? []).filter((id) => DECK_BY_ID.has(id));
+    if (!s.decks.length) s.decks = [...this.defaults.decks];
     s.regions = (s.regions ?? []).filter((r) => REGIONS.includes(r));
     if (!s.regions.length) s.regions = [...this.defaults.regions];
-    if (!DIRECTIONS[s.deck].some(([id]) => id === s.direction)) s.direction = this.defaults.direction;
+    if (!DIRECTIONS.includes(s.direction)) s.direction = this.defaults.direction;
   },
 
   filters(s) {
+    const chosen = s.decks.map((id) => DECK_BY_ID.get(id));
+    // With one deck the direction can be named exactly; with several it can
+    // only be described, so it lists what each way round means.
+    const describe = (direction) => (chosen.length === 1
+      ? { label: chosen[0][direction].label, hint: chosen[0][direction].hint }
+      : {
+        label: direction === 'forward' ? 'Forward' : 'Reverse',
+        hint: chosen.map((deck) => deck[direction].hint).join(' · '),
+      });
+
     return [
       {
-        id: 'deck',
-        legend: 'Deck',
-        type: 'radio',
-        options: DECKS.map(([value, label, hint]) => ({ value, label, hint })),
+        id: 'decks',
+        legend: 'Decks',
+        type: 'checkbox',
+        options: DECKS.map((deck) => ({ value: deck.id, label: deck.label, hint: deck.hint })),
       },
       {
         id: 'regions',
@@ -139,7 +215,11 @@ export const geography = {
         id: 'direction',
         legend: 'Direction',
         type: 'radio',
-        options: DIRECTIONS[s.deck].map(([value, label, hint]) => ({ value, label, hint })),
+        options: [
+          { value: 'forward', ...describe('forward') },
+          { value: 'reverse', ...describe('reverse') },
+          { value: 'mix', label: 'Mix both', hint: 'alternates between the two' },
+        ],
       },
     ];
   },
@@ -147,16 +227,11 @@ export const geography = {
   cardIds(s) {
     const directions = s.direction === 'mix' ? ['forward', 'reverse'] : [s.direction];
     const ids = [];
-    for (const country of COUNTRIES) {
-      if (!s.regions.includes(country.region)) continue;
-      for (const direction of directions) {
-        // Flag card ids are the bare code and code|n, exactly as they were
-        // when flags was its own subject, so that history still matches.
-        if (s.deck === 'flags') {
-          ids.push(direction === 'reverse' ? `${country.code}|n` : country.code);
-        } else {
-          ids.push(direction === 'reverse' ? `cap|${country.code}|r` : `cap|${country.code}`);
-        }
+    for (const deckId of s.decks) {
+      const deck = DECK_BY_ID.get(deckId);
+      for (const country of COUNTRIES) {
+        if (!s.regions.includes(country.region)) continue;
+        for (const direction of directions) ids.push(cardId(deck, country.code, direction));
       }
     }
     return ids;
@@ -164,64 +239,22 @@ export const geography = {
 
   parse(id) {
     const parts = id.split('|');
-    const capitals = parts[0] === 'cap';
-    const code = capitals ? parts[1] : parts[0];
+    const prefixed = DECKS.find((d) => d.prefix && d.prefix === parts[0]);
+    const deck = prefixed ?? DECK_BY_ID.get('flags');
+    const code = prefixed ? parts[1] : parts[0];
     const country = BY_CODE.get(code);
     if (!country) return null;
-    const reverse = capitals ? parts[2] === 'r' : parts[1] === 'n';
-    return { country, deck: capitals ? 'capitals' : 'flags', direction: reverse ? 'reverse' : 'forward' };
+    const mark = prefixed ? parts[2] : parts[1];
+    const direction = mark === deck.reverseMark ? 'reverse' : 'forward';
+    return { country, deck, direction, side: deck[direction] };
   },
 
-  prompt({ country, deck, direction }) {
-    if (deck === 'capitals') {
-      return direction === 'reverse'
-        ? { pill: 'Which country?', lead: 'Which country has this capital?', nodes: [textNode(country.capital)] }
-        : { pill: 'Which capital?', lead: 'What is the capital of', nodes: [textNode(country.name)] };
-    }
-    return direction === 'reverse'
-      ? { pill: 'Which flag?', lead: 'What flag does this country fly?', nodes: [textNode(country.name)] }
-      : { pill: 'Which country?', lead: 'Whose flag is this?', nodes: [flagImage(country, 'flag-prompt')] };
-  },
-
-  answer({ country, deck, direction }) {
-    if (deck === 'capitals') {
-      return direction === 'reverse'
-        ? { answer: country.name, sub: `capital: ${country.capital} · ${country.region}` }
-        : { answer: country.capital, sub: `${country.name} · ${country.region}` };
-    }
-    return direction === 'reverse'
-      ? { answerNodes: [flagImage(country, 'flag-answer')], sub: `${country.name} · ${country.region}` }
-      : { answer: country.name, sub: `capital: ${country.capital} · ${country.region}` };
-  },
-
+  prompt: ({ country, side }) => side.prompt(country),
+  answer: ({ country, side }) => side.answer(country),
+  faces: ({ country, side }) => side.faces(country),
   extra: () => null,
 
-  faces({ country, deck, direction }) {
-    if (deck === 'capitals') {
-      return direction === 'reverse'
-        ? { question: country.capital, answer: country.name }
-        : { question: country.name, answer: country.capital };
-    }
-    return direction === 'reverse'
-      ? { question: country.name, answer: '(its flag)' }
-      : { question: `${country.name}'s flag`, answer: country.name };
-  },
-
-  /** Nobody types a flag, so recalling one is always self-graded. */
-  typable: ({ deck, direction }) => !(deck === 'flags' && direction === 'reverse'),
-
-  check(input, { country, deck, direction }) {
-    if (deck === 'flags') {
-      if (direction === 'reverse') return null;
-      return graded(input, [country.name, ...(country.aka ?? [])]);
-    }
-    return direction === 'reverse'
-      ? graded(input, [country.name, ...(country.aka ?? [])])
-      : graded(input, [country.capital, ...(country.capitalAka ?? [])]);
-  },
-
-  placeholder({ deck, direction }) {
-    if (deck === 'flags') return direction === 'reverse' ? '' : 'country…';
-    return direction === 'reverse' ? 'country…' : 'capital…';
-  },
+  typable: ({ side }) => side.check !== null,
+  check: (input, { country, side }) => (side.check ? side.check(input, country) : null),
+  placeholder: ({ side }) => side.placeholder,
 };

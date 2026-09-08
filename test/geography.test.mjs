@@ -40,29 +40,54 @@ test('the artwork stays small enough to precache', () => {
   assert.ok(total < 900 * 1024, `flag set is ${Math.round(total / 1024)}KB`);
 });
 
-test('both decks produce a card per country', () => {
+test('each deck produces a card per country', () => {
   for (const deck of ['flags', 'capitals']) {
-    assert.equal(geography.cardIds(settings({ deck })).length, COUNTRIES.length, deck);
-    assert.equal(geography.cardIds(settings({ deck, direction: 'mix' })).length, COUNTRIES.length * 2, deck);
+    assert.equal(geography.cardIds(settings({ decks: [deck] })).length, COUNTRIES.length, deck);
+    assert.equal(geography.cardIds(settings({ decks: [deck], direction: 'mix' })).length, COUNTRIES.length * 2, deck);
   }
   const europe = geography.cardIds(settings({ regions: ['Europe'] }));
   assert.equal(europe.length, COUNTRIES.filter((c) => c.region === 'Europe').length);
 });
 
+test('decks can be studied together', () => {
+  const both = geography.cardIds(settings({ decks: ['flags', 'capitals'] }));
+  assert.equal(both.length, COUNTRIES.length * 2);
+  // Both kinds really are in the one pool, not just counted twice.
+  assert.ok(both.includes('PT'), 'a flag card');
+  assert.ok(both.includes('cap|PT'), 'a capital card');
+  assert.equal(new Set(both).size, both.length, 'no id collides between decks');
+
+  const everything = geography.cardIds(settings({ decks: ['flags', 'capitals'], direction: 'mix' }));
+  assert.equal(everything.length, COUNTRIES.length * 4);
+  assert.equal(new Set(everything).size, everything.length);
+});
+
+test('the direction is named exactly for one deck and described for several', () => {
+  const one = geography.filters(settings({ decks: ['capitals'] }))[2].options;
+  assert.equal(one[0].label, 'Name the capital');
+  assert.equal(one[1].label, 'Name the country');
+
+  const many = geography.filters(settings({ decks: ['flags', 'capitals'] }))[2].options;
+  assert.equal(many[0].label, 'Forward');
+  assert.match(many[0].hint, /flag → country · country → capital/);
+  assert.match(many[1].hint, /country → flag · capital → country/);
+});
+
 test('flag card ids are unchanged, so the old history still matches', () => {
   // Flags used to be its own subject; those ids must survive the move.
-  assert.deepEqual(geography.parse('PT'), {
-    country: COUNTRIES.find((c) => c.code === 'PT'), deck: 'flags', direction: 'forward',
-  });
+  const card = geography.parse('PT');
+  assert.equal(card.country.code, 'PT');
+  assert.equal(card.deck.id, 'flags');
+  assert.equal(card.direction, 'forward');
   assert.equal(geography.parse('PT|n').direction, 'reverse');
   assert.ok(geography.cardIds(settings()).includes('PT'));
 });
 
 test('capital cards round-trip through their own ids', () => {
-  assert.equal(geography.parse('cap|PT').deck, 'capitals');
+  assert.equal(geography.parse('cap|PT').deck.id, 'capitals');
   assert.equal(geography.parse('cap|PT').direction, 'forward');
   assert.equal(geography.parse('cap|PT|r').direction, 'reverse');
-  for (const id of geography.cardIds(settings({ deck: 'capitals', direction: 'mix' }))) {
+  for (const id of geography.cardIds(settings({ decks: ['capitals'], direction: 'mix' }))) {
     assert.ok(geography.parse(id), `unparseable: ${id}`);
   }
   assert.equal(geography.parse('cap|ZZ'), null, 'an unknown country is not invented');
@@ -120,9 +145,17 @@ test('each card describes itself for the recap', () => {
 
 test('settings that no longer make sense fall back rather than emptying the deck', () => {
   assert.deepEqual(settings({ regions: [] }).regions, REGIONS);
-  assert.equal(settings({ deck: 'moons' }).deck, geography.defaults.deck);
-  // "Recall the flag" is meaningless in the capitals deck, so it is dropped.
-  assert.equal(settings({ deck: 'capitals', direction: 'nonsense' }).direction, 'forward');
+  assert.deepEqual(settings({ decks: ['moons'] }).decks, geography.defaults.decks);
+  assert.deepEqual(settings({ decks: [] }).decks, geography.defaults.decks);
+  assert.equal(settings({ direction: 'sideways' }).direction, 'forward');
+});
+
+test('a single deck chosen before decks could be mixed is kept', () => {
+  // The setting used to be one radio value; nobody should be reset to flags
+  // because they had picked capitals.
+  const carried = settings({ deck: 'capitals' });
+  assert.deepEqual(carried.decks, ['capitals']);
+  assert.equal(carried.deck, undefined, 'the old key is not left lying around');
 });
 
 test('history from the old flags subject is carried over, not dropped', () => {
