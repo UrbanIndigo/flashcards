@@ -152,25 +152,29 @@ main {
 .prompt-lead { margin: 0; color: var(--ink-soft); font-size: .92rem; }
 .prompt-lead strong { color: var(--ink); font-weight: 600; }
 
-.prompt-verb {
+.prompt-body {
   margin: 10px 0 0;
   font-family: var(--serif);
   font-size: clamp(1.9rem, 7vw, 2.6rem);
   line-height: 1.2;
   letter-spacing: -.02em;
 }
-#prompt-pronoun { color: var(--accent); }
+.prompt-body .accent { color: var(--accent); }
+
+/* A flag has to be large enough to actually read. */
+.prompt-body .flag { font-size: clamp(4rem, 22vw, 6rem); line-height: 1.1; }
+.answer.huge { font-size: clamp(4rem, 22vw, 6rem); line-height: 1.1; }
 
 /* A sentence needs to read like prose, not like a headline. */
-.sentence {
+.prompt-body.prose {
   margin: 6px 0 0;
-  font-family: var(--serif);
   font-size: clamp(1.02rem, 4.2vw, 1.2rem);
   line-height: 1.65;
+  letter-spacing: normal;
   text-align: left;
   text-wrap: pretty;
 }
-.sentence mark {
+.prompt-body.prose mark {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 600;
