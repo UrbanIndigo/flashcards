@@ -176,6 +176,16 @@ main {
 .flag-answer { width: min(220px, 62%); }
 .answer.huge { font-size: clamp(4rem, 22vw, 6rem); line-height: 1.1; }
 
+/* A whole question needs to sit between a headline and prose: big enough to
+   be the focus, small enough to wrap without shouting. */
+.prompt-body.question {
+  font-size: clamp(1.32rem, 5.4vw, 1.7rem);
+  line-height: 1.4;
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+.prompt-body strong { font-weight: 700; }
+
 /* A sentence needs to read like prose, not like a headline. */
 .prompt-body.prose {
   margin: 6px 0 0;

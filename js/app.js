@@ -188,9 +188,13 @@ function renderCard() {
   lead.textContent = '';
   if (Array.isArray(spec.lead)) lead.append(...spec.lead);
   else lead.textContent = spec.lead ?? '';
+  // A card that asks its question as one sentence has no separate stem, and
+  // an empty lead would just leave a gap above it.
+  lead.hidden = !spec.lead;
 
   const body = $('prompt-body');
-  body.className = `prompt-body${spec.prose ? ' prose' : ''}`;
+  const variant = [spec.prose && 'prose', spec.question && 'question'].filter(Boolean).join(' ');
+  body.className = `prompt-body${variant ? ` ${variant}` : ''}`;
   body.replaceChildren(...spec.nodes);
 
   const typing = typingAllowed();

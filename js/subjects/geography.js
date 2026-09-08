@@ -46,6 +46,13 @@ function textNode(value) {
   return node;
 }
 
+/** The variable part of a question, so the eye lands on it first. */
+function strong(value) {
+  const node = document.createElement('strong');
+  node.textContent = value;
+  return node;
+}
+
 function flagImage(country, className) {
   const img = document.createElement('img');
   img.className = className;
@@ -100,7 +107,13 @@ const DECKS = [
       label: 'Name the capital',
       hint: 'country → capital',
       placeholder: 'capital…',
-      prompt: (c) => ({ pill: 'Which capital?', lead: 'What is the capital of', nodes: [textNode(c.name)] }),
+      // Asked as a whole sentence rather than a stem and a separate word,
+      // with the country picked out as the part that changes.
+      prompt: (c) => ({
+        pill: 'Which capital?',
+        question: true,
+        nodes: [textNode('What is the capital of '), strong(c.name), textNode('?')],
+      }),
       answer: (c) => ({ answer: c.capital, sub: `${c.name} · ${c.region}` }),
       faces: (c) => ({ question: c.name, answer: c.capital }),
       check: (input, c) => graded(input, capitalNames(c)),
@@ -109,7 +122,11 @@ const DECKS = [
       label: 'Name the country',
       hint: 'capital → country',
       placeholder: 'country…',
-      prompt: (c) => ({ pill: 'Which country?', lead: 'Which country has this capital?', nodes: [textNode(c.capital)] }),
+      prompt: (c) => ({
+        pill: 'Which country?',
+        question: true,
+        nodes: [strong(c.capital), textNode(' is the capital of which country?')],
+      }),
       answer: (c) => ({ answer: c.name, sub: `capital: ${c.capital} · ${c.region}` }),
       faces: (c) => ({ question: c.capital, answer: c.name }),
       check: (input, c) => graded(input, countryNames(c)),
