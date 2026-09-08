@@ -13,11 +13,18 @@ progress in the browser's `localStorage`.
 | | |
 |---|---|
 | **French verbs** | 88 verbs across 9 tenses, in both directions, plus reading real sentences from novels |
-| **Geography** | 196 countries — a **Flags** deck and a **Capitals** deck, either direction, filterable by region |
+| **Geography** | 196 countries — **Flags** and **Capitals** decks, studied singly or together, either direction, filterable by region |
 
-A subject can hold several decks when they share their material. Flags and
-capitals share a country list, a set of regions and a sense of what knowing
-means, so they are two decks of one subject rather than two subjects.
+A subject can hold several decks when they share their material, and they can
+be studied together — ticking both Flags and Capitals puts all four card
+kinds in one queue. Each deck is a self-contained definition in
+`js/subjects/geography.js`: its two directions, how a card is worded, and
+what counts as an answer. Adding another kind of question is one entry in
+that list.
+
+With one deck the Direction control names each way round exactly ("Name the
+capital"); with several it can only describe them, so it lists what each
+direction means across the decks you have on.
 
 ### Flags are images, not emoji
 
