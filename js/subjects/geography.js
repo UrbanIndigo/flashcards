@@ -53,13 +53,13 @@ function strong(value) {
   return node;
 }
 
-function flagImage(country, className) {
+function flagImage(country) {
   const img = document.createElement('img');
-  img.className = className;
+  img.className = 'flag-prompt';
   img.src = `flags/${country.flag}`;
-  // Naming the country in the alt text would answer the question out loud
-  // for anyone using a screen reader.
-  img.alt = className === 'flag-answer' ? `Flag of ${country.name}` : 'A national flag';
+  // Naming the country here would answer the question out loud for anyone
+  // using a screen reader.
+  img.alt = 'A national flag';
   img.decoding = 'async';
   return img;
 }
@@ -81,21 +81,14 @@ const DECKS = [
       label: 'Name the country',
       hint: 'flag → country',
       placeholder: 'country…',
-      prompt: (c) => ({ pill: 'Which country?', lead: 'Whose flag is this?', nodes: [flagImage(c, 'flag-prompt')] }),
+      prompt: (c) => ({ pill: 'Which country?', lead: 'Whose flag is this?', nodes: [flagImage(c)] }),
       answer: (c) => ({ answer: c.name, sub: `capital: ${c.capital} · ${c.region}` }),
       faces: (c) => ({ question: `${c.name}'s flag`, answer: c.name }),
       check: (input, c) => graded(input, countryNames(c)),
     },
-    reverse: {
-      label: 'Recall the flag',
-      hint: 'country → flag',
-      // Nobody types a flag, so this direction is always self-graded.
-      placeholder: '',
-      prompt: (c) => ({ pill: 'Which flag?', lead: 'What flag does this country fly?', nodes: [textNode(c.name)] }),
-      answer: (c) => ({ answerNodes: [flagImage(c, 'flag-answer')], sub: `${c.name} · ${c.region}` }),
-      faces: (c) => ({ question: c.name, answer: '(its flag)' }),
-      check: null,
-    },
+    // No country → flag direction: it could only ever be self-graded, since
+    // there is no way to answer it except by deciding for yourself whether
+    // the flag you pictured was right.
   },
   {
     id: 'capitals',
@@ -140,7 +133,16 @@ const BY_CODE = new Map(COUNTRIES.map((country) => [country.code, country]));
 const cardId = (deck, code, direction) => [deck.prefix, code, direction === 'reverse' ? deck.reverseMark : '']
   .filter(Boolean).join('|');
 
-const DIRECTIONS = ['forward', 'reverse', 'mix'];
+const DIRECTION_IDS = ['forward', 'reverse'];
+
+/**
+ * Which ways round the chosen decks can actually be asked. A deck need not
+ * have both, and "mix" only means something when there is more than one.
+ */
+function availableDirections(decks) {
+  const ids = DIRECTION_IDS.filter((id) => decks.some((deck) => deck[id]));
+  return ids.length > 1 ? [...ids, 'mix'] : ids;
+}
 
 export const geography = {
   id: 'geography',
@@ -197,19 +199,38 @@ export const geography = {
     if (!s.decks.length) s.decks = [...this.defaults.decks];
     s.regions = (s.regions ?? []).filter((r) => REGIONS.includes(r));
     if (!s.regions.length) s.regions = [...this.defaults.regions];
-    if (!DIRECTIONS.includes(s.direction)) s.direction = this.defaults.direction;
+    const available = availableDirections(s.decks.map((id) => DECK_BY_ID.get(id)));
+    if (!available.includes(s.direction)) [s.direction] = available;
   },
 
   filters(s) {
     const chosen = s.decks.map((id) => DECK_BY_ID.get(id));
+    const available = availableDirections(chosen);
+
     // With one deck the direction can be named exactly; with several it can
-    // only be described, so it lists what each way round means.
-    const describe = (direction) => (chosen.length === 1
-      ? { label: chosen[0][direction].label, hint: chosen[0][direction].hint }
-      : {
-        label: direction === 'forward' ? 'Forward' : 'Reverse',
-        hint: chosen.map((deck) => deck[direction].hint).join(' · '),
-      });
+    // only be described, so it lists what each way round means — naming only
+    // the decks that actually have that direction.
+    const describe = (direction) => {
+      const sides = chosen.filter((deck) => deck[direction]).map((deck) => deck[direction]);
+      // Naming one direction exactly while describing the other reads as an
+      // inconsistency, so the choice turns on how many decks are on rather
+      // than on how many happen to have this direction.
+      return chosen.length === 1
+        ? { label: sides[0].label, hint: sides[0].hint }
+        : {
+          label: direction === 'forward' ? 'Forward' : 'Reverse',
+          hint: sides.map((side) => side.hint).join(' · '),
+        };
+    };
+
+    const directionGroup = {
+      id: 'direction',
+      legend: 'Direction',
+      type: 'radio',
+      options: available.map((direction) => (direction === 'mix'
+        ? { value: 'mix', label: 'Mix both', hint: 'alternates between the two' }
+        : { value: direction, ...describe(direction) })),
+    };
 
     return [
       {
@@ -228,27 +249,23 @@ export const geography = {
           hint: `${COUNTRIES.filter((c) => c.region === region).length}`,
         })),
       },
-      {
-        id: 'direction',
-        legend: 'Direction',
-        type: 'radio',
-        options: [
-          { value: 'forward', ...describe('forward') },
-          { value: 'reverse', ...describe('reverse') },
-          { value: 'mix', label: 'Mix both', hint: 'alternates between the two' },
-        ],
-      },
+      // A single way round is not a choice, so the control only appears when
+      // there is one to make.
+      ...(available.length > 1 ? [directionGroup] : []),
     ];
   },
 
   cardIds(s) {
-    const directions = s.direction === 'mix' ? ['forward', 'reverse'] : [s.direction];
+    const directions = s.direction === 'mix' ? DIRECTION_IDS : [s.direction];
     const ids = [];
     for (const deckId of s.decks) {
       const deck = DECK_BY_ID.get(deckId);
-      for (const country of COUNTRIES) {
-        if (!s.regions.includes(country.region)) continue;
-        for (const direction of directions) ids.push(cardId(deck, country.code, direction));
+      for (const direction of directions) {
+        if (!deck[direction]) continue;
+        for (const country of COUNTRIES) {
+          if (!s.regions.includes(country.region)) continue;
+          ids.push(cardId(deck, country.code, direction));
+        }
       }
     }
     return ids;
@@ -263,7 +280,11 @@ export const geography = {
     if (!country) return null;
     const mark = prefixed ? parts[2] : parts[1];
     const direction = mark === deck.reverseMark ? 'reverse' : 'forward';
-    return { country, deck, direction, side: deck[direction] };
+    // A direction a deck no longer has: the id is history from an older
+    // arrangement, and the app skips a card it cannot describe.
+    const side = deck[direction];
+    if (!side) return null;
+    return { country, deck, direction, side };
   },
 
   prompt: ({ country, side }) => side.prompt(country),

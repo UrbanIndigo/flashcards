@@ -13,7 +13,7 @@ progress in the browser's `localStorage`.
 | | |
 |---|---|
 | **French verbs** | 88 verbs across 9 tenses, in both directions, plus reading real sentences from novels |
-| **Geography** | 196 countries — **Flags** and **Capitals** decks, studied singly or together, either direction, filterable by region |
+| **Geography** | 196 countries — **Flags** and **Capitals** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
 be studied together — ticking both Flags and Capitals puts all four card
@@ -22,9 +22,16 @@ kinds in one queue. Each deck is a self-contained definition in
 what counts as an answer. Adding another kind of question is one entry in
 that list.
 
-With one deck the Direction control names each way round exactly ("Name the
-capital"); with several it can only describe them, so it lists what each
-direction means across the decks you have on.
+A deck need not go both ways. Flags only ask flag → country: the other
+direction could only ever be graded by deciding for yourself whether the flag
+you pictured was right, which is not a question worth asking. Capitals go
+both ways.
+
+The Direction control follows from that. With a single deck it names each way
+round exactly ("Name the capital"); with several it describes them, listing
+what each direction means across the decks you have on; and when there is
+only one way round available it does not appear at all, because there is
+nothing to choose.
 
 ### Flags are images, not emoji
 

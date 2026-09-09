@@ -163,7 +163,7 @@ main {
 
 /* A flag is a picture, not a glyph: emoji flags are drawn by the operating
    system and differ between phones, and some decline to draw them at all. */
-.flag-prompt, .flag-answer {
+.flag-prompt {
   display: block;
   width: min(280px, 74%);
   margin: 6px auto 0;
@@ -173,8 +173,6 @@ main {
   /* A white flag on a white card would otherwise have no edges. */
   box-shadow: 0 0 0 1px var(--line), 0 6px 18px -8px rgba(0, 0, 0, .35);
 }
-.flag-answer { width: min(220px, 62%); }
-.answer.huge { font-size: clamp(4rem, 22vw, 6rem); line-height: 1.1; }
 
 /* A whole question needs to sit between a headline and prose: big enough to
    be the focus, small enough to wrap without shouting. */
