@@ -174,6 +174,21 @@ main {
   box-shadow: 0 0 0 1px var(--line), 0 6px 18px -8px rgba(0, 0, 0, .35);
 }
 
+/* An outline is drawn in the page rather than fetched, so it inherits the
+   theme's ink instead of arriving as a black picture on a dark card. The
+   stroke is what keeps an archipelago from disappearing: at this size the
+   islands of Greece are a pixel each. */
+.shape-prompt {
+  display: block;
+  width: min(240px, 66%);
+  margin: 4px auto 0;
+  aspect-ratio: 1;
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
 /* A whole question needs to sit between a headline and prose: big enough to
    be the focus, small enough to wrap without shouting. */
 .prompt-body.question {

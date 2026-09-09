@@ -34,6 +34,8 @@ const ASSETS = [
   'js/subjects/french.js',
   'js/subjects/geography.js',
   'js/subjects/geography-data.js',
+  'js/subjects/shapes-data.js',
+  'js/subjects/borders-data.js',
   'flags/manifest.json',
   'icons/icon-192.png',
   'icons/icon-512.png',

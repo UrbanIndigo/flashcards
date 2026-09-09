@@ -2,7 +2,7 @@
 
 A spaced-repetition flashcard app. It began as French verb conjugation and
 still does that best, but the material is now pluggable: **French verbs** and
-**flags of the world** ship with it, and a new subject is one file.
+**world geography** ship with it, and a new subject is one file.
 
 It installs to a phone home screen and works with no internet. No build step,
 no dependencies, no accounts: plain HTML, CSS and ES modules, with your
@@ -13,19 +13,26 @@ progress in the browser's `localStorage`.
 | | |
 |---|---|
 | **French verbs** | 88 verbs across 9 tenses, in both directions, plus reading real sentences from novels |
-| **Geography** | 196 countries — **Flags** and **Capitals** decks, studied singly or together, filterable by region |
+| **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
-be studied together — ticking both Flags and Capitals puts all four card
-kinds in one queue. Each deck is a self-contained definition in
+be studied together — ticking Flags, Capitals and Outlines puts every one of
+those card kinds in one queue. Each deck is a self-contained definition in
 `js/subjects/geography.js`: its two directions, how a card is worded, and
 what counts as an answer. Adding another kind of question is one entry in
 that list.
 
-A deck need not go both ways. Flags only ask flag → country: the other
-direction could only ever be graded by deciding for yourself whether the flag
-you pictured was right, which is not a question worth asking. Capitals go
-both ways.
+A deck need not go both ways. Flags only ask flag → country, and Outlines
+only outline → country: the other direction could only ever be graded by
+deciding for yourself whether the picture in your head was right, which is
+not a question worth asking. Capitals go both ways.
+
+A deck need not cover every country either. Twenty-four are too small to have
+an outline worth guessing — Monaco is two square kilometres, and at any scale
+its coastline is a squiggle rather than a shape — and forty have no land
+border at all, so they are left out of those decks rather than asked as
+cards whose answer is always "none". The region counts in Settings follow the
+decks you have on: only one country in Oceania has a neighbour.
 
 The Direction control follows from that. With a single deck it names each way
 round exactly ("Name the capital"); with several it describes them, listing
@@ -45,6 +52,36 @@ them as SVG would cost 1.9MB, and this takes the whole set to about 510KB,
 which is small enough to precache for offline use without a visible
 difference on screen.
 
+### Outlines and borders
+
+Both come from Natural Earth (public domain), by way of `world-atlas` (ISC),
+and are built by `tools/build-atlas.mjs`. Borders fall out of the topology
+for free — two countries are neighbours when they share an edge of the map —
+which is a better source than a typed list, because it cannot disagree with
+the map the outlines are drawn from.
+
+Outlines are projected at build time, so the app ships 170KB of SVG paths
+rather than a megabyte of coordinates and a projection library. Each is drawn
+with an equal-area projection centred on the country itself, so its shape is
+not stretched by where it happens to sit on a world map, and scaled to fill
+the frame, because at a common scale Luxembourg would be a full stop next to
+Russia. Far-flung territory is left off: fitting French Guiana and Réunion in
+the same picture as the hexagon would leave the hexagon too small to read.
+What counts as far-flung is a rule rather than a list — a piece stays if it
+is close enough to belong to the same picture, like Corsica or Tasmania, or
+big enough to be the country whatever the distance, which is what keeps
+peninsular Malaysia attached to Borneo.
+
+A borders answer is a list, marked as a set: order does not matter, nor do
+the separators, and "Bosnia and Herzegovina" is not split down the middle.
+Naming most of a long list is a near miss and says what was missed; naming a
+country that is nowhere near is a different mistake and says so.
+
+France is the awkward case. The French Republic really does border Brazil and
+Suriname, along French Guiana, but nobody listing the countries around France
+means Brazil. Those borders are accepted, never required, and explained when
+the answer comes up.
+
 ### Capitals
 
 Several countries genuinely have more than one capital, and a few have
@@ -62,8 +99,8 @@ the better spelling of the two.
 
 Each subject owns its own material, its own settings and its own storage, so
 histories never mix and switching between them costs nothing. The daily
-allowance is counted per subject too: an evening on flags does not eat the
-French twenty.
+allowance is counted per subject too: an evening on geography does not eat
+the French twenty.
 
 ### Adding a subject
 
@@ -90,8 +127,8 @@ export const capitals = {
 };
 ```
 
-`js/subjects/geography.js` is the short worked example — about 200 lines for
-two decks, most of it wording. `js/subjects/french.js` is the awkward one,
+`js/subjects/geography.js` is the short worked example — four decks, most of
+it wording. `js/subjects/french.js` is the awkward one,
 since it generates cards rather than listing them.
 
 Country data is rebuilt with:
@@ -101,7 +138,15 @@ node tools/build-geography.mjs > js/subjects/geography-data.js
 ```
 
 which also writes `flags/manifest.json`, the list the service worker reads at
-install time so 196 paths do not have to be pasted into it.
+install time so 196 paths do not have to be pasted into it. Outlines and
+borders are rebuilt with:
+
+```sh
+npm --prefix /tmp install world-atlas topojson-client d3-geo i18n-iso-countries
+node tools/build-atlas.mjs
+```
+
+which writes `js/subjects/shapes-data.js` and `js/subjects/borders-data.js`.
 
 ## On your phone, offline
 
