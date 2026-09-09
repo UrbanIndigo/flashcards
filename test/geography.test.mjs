@@ -40,13 +40,27 @@ test('the artwork stays small enough to precache', () => {
   assert.ok(total < 900 * 1024, `flag set is ${Math.round(total / 1024)}KB`);
 });
 
-test('each deck produces a card per country', () => {
-  for (const deck of ['flags', 'capitals']) {
-    assert.equal(geography.cardIds(settings({ decks: [deck] })).length, COUNTRIES.length, deck);
-    assert.equal(geography.cardIds(settings({ decks: [deck], direction: 'mix' })).length, COUNTRIES.length * 2, deck);
-  }
+test('each deck produces a card per country per direction it has', () => {
+  // Flags only go one way: a country → flag card could only ever be
+  // self-graded, so it does not exist.
+  assert.equal(geography.cardIds(settings({ decks: ['flags'] })).length, COUNTRIES.length);
+  assert.equal(geography.cardIds(settings({ decks: ['flags'], direction: 'mix' })).length, COUNTRIES.length);
+  assert.equal(geography.cardIds(settings({ decks: ['capitals'] })).length, COUNTRIES.length);
+  assert.equal(
+    geography.cardIds(settings({ decks: ['capitals'], direction: 'mix' })).length,
+    COUNTRIES.length * 2,
+  );
   const europe = geography.cardIds(settings({ regions: ['Europe'] }));
   assert.equal(europe.length, COUNTRIES.filter((c) => c.region === 'Europe').length);
+});
+
+test('a deck with one direction offers no direction control', () => {
+  const flagsOnly = geography.filters(settings({ decks: ['flags'] }));
+  assert.equal(flagsOnly.find((f) => f.id === 'direction'), undefined, 'nothing to choose');
+  assert.equal(settings({ decks: ['flags'] }).direction, 'forward');
+  // A stored direction the deck cannot offer falls back rather than emptying.
+  assert.equal(settings({ decks: ['flags'], direction: 'reverse' }).direction, 'forward');
+  assert.ok(geography.filters(settings({ decks: ['capitals'] })).some((f) => f.id === 'direction'));
 });
 
 test('decks can be studied together', () => {
@@ -57,20 +71,26 @@ test('decks can be studied together', () => {
   assert.ok(both.includes('cap|PT'), 'a capital card');
   assert.equal(new Set(both).size, both.length, 'no id collides between decks');
 
+  // Flags one way, capitals both: three cards per country, not four.
   const everything = geography.cardIds(settings({ decks: ['flags', 'capitals'], direction: 'mix' }));
-  assert.equal(everything.length, COUNTRIES.length * 4);
+  assert.equal(everything.length, COUNTRIES.length * 3);
   assert.equal(new Set(everything).size, everything.length);
+
+  // Reverse with both decks on yields only the deck that has a reverse.
+  const reversed = geography.cardIds(settings({ decks: ['flags', 'capitals'], direction: 'reverse' }));
+  assert.equal(reversed.length, COUNTRIES.length);
+  assert.ok(reversed.every((id) => id.startsWith('cap|')));
 });
 
 test('the direction is named exactly for one deck and described for several', () => {
-  const one = geography.filters(settings({ decks: ['capitals'] }))[2].options;
-  assert.equal(one[0].label, 'Name the capital');
-  assert.equal(one[1].label, 'Name the country');
+  const one = geography.filters(settings({ decks: ['capitals'] })).find((f) => f.id === 'direction');
+  assert.deepEqual(one.options.map((o) => o.label), ['Name the capital', 'Name the country', 'Mix both']);
 
-  const many = geography.filters(settings({ decks: ['flags', 'capitals'] }))[2].options;
-  assert.equal(many[0].label, 'Forward');
-  assert.match(many[0].hint, /flag → country · country → capital/);
-  assert.match(many[1].hint, /country → flag · capital → country/);
+  const many = geography.filters(settings({ decks: ['flags', 'capitals'] })).find((f) => f.id === 'direction');
+  assert.deepEqual(many.options.map((o) => o.label), ['Forward', 'Reverse', 'Mix both']);
+  assert.match(many.options[0].hint, /flag → country · country → capital/);
+  // Only capitals has a reverse, so only it is named there.
+  assert.equal(many.options[1].hint, 'capital → country');
 });
 
 test('flag card ids are unchanged, so the old history still matches', () => {
@@ -79,8 +99,10 @@ test('flag card ids are unchanged, so the old history still matches', () => {
   assert.equal(card.country.code, 'PT');
   assert.equal(card.deck.id, 'flags');
   assert.equal(card.direction, 'forward');
-  assert.equal(geography.parse('PT|n').direction, 'reverse');
   assert.ok(geography.cardIds(settings()).includes('PT'));
+  // The country → flag direction is gone, so its old ids describe nothing
+  // and the app skips them rather than rendering a broken card.
+  assert.equal(geography.parse('PT|n'), null);
 });
 
 test('capital cards round-trip through their own ids', () => {
@@ -129,11 +151,12 @@ test('country names accept their everyday aliases in both decks', () => {
   assert.equal(geography.check('Ivory Coast', geography.parse('CI')).level, 'correct');
 });
 
-test('recalling a flag is self-graded; everything else is typed', () => {
-  assert.equal(geography.typable(geography.parse('PT|n')), false);
-  assert.equal(geography.check('anything', geography.parse('PT|n')), null);
-  for (const id of ['PT', 'cap|PT', 'cap|PT|r']) {
+test('every card that exists can be typed', () => {
+  // The one direction that could not be typed has been removed rather than
+  // left as a card you grade yourself.
+  for (const id of geography.cardIds(settings({ decks: ['flags', 'capitals'], direction: 'mix' }))) {
     assert.equal(geography.typable(geography.parse(id)), true, id);
+    assert.notEqual(geography.check('something', geography.parse(id)), null, id);
   }
 });
 

@@ -300,9 +300,7 @@ function renderResult(verdict) {
 
   const spec = subject.answer(current);
   const answer = $('answer');
-  answer.className = `answer${spec.big ? ' huge' : ''}`;
-  if (spec.answerNodes) answer.replaceChildren(...spec.answerNodes);
-  else answer.textContent = spec.answer;
+  answer.textContent = spec.answer;
 
   $('answer-sub').textContent = spec.sub ?? '';
   $('answer-sub').hidden = !spec.sub;
@@ -708,9 +706,14 @@ renderCard();
 // are looking at keeps a consistent set of files. When it is ready, the
 // reader is offered the swap rather than having it happen underfoot.
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  // A worker claims the page when it first activates, which changes the
+  // controller without anything having been updated. Reloading on that would
+  // restart the app a second after a first-time visitor opened it, mid-card.
+  // Only a change away from a controller we already had is a real update.
+  const hadController = Boolean(navigator.serviceWorker.controller);
   let reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return;
+    if (!hadController || reloading) return;
     reloading = true;
     location.reload();
   });
