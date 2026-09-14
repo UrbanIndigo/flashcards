@@ -345,6 +345,25 @@ button { font: inherit; }
   text-align: left;
 }
 
+/* What comes back at you. A phrase is half of an exchange, and the half you
+   will have to understand on the spot is the other one. */
+.answer-reply {
+  margin: 12px 0 0;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.answer-reply::before { content: '— '; color: var(--ink-faint); }
+
+.reply-gloss {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--sans);
+  font-size: .84rem;
+  color: var(--ink-faint);
+}
+
 /* --------------------------------------------------------------- grading */
 
 /* Three buttons, told apart by colour before they are read: red is wrong,

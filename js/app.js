@@ -304,6 +304,20 @@ function renderResult(verdict) {
 
   $('answer-sub').textContent = spec.sub ?? '';
   $('answer-sub').hidden = !spec.sub;
+
+  // An optional second line: what the other person says back.
+  const reply = $('answer-reply');
+  reply.textContent = '';
+  reply.hidden = !spec.reply;
+  if (spec.reply) {
+    reply.append(spec.reply.text);
+    if (spec.reply.gloss) {
+      const gloss = document.createElement('span');
+      gloss.className = 'reply-gloss';
+      gloss.textContent = spec.reply.gloss;
+      reply.append(gloss);
+    }
+  }
   $('answer-source').textContent = spec.source ?? '';
   $('answer-source').hidden = !spec.source;
   $('rule').textContent = spec.note ?? '';

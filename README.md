@@ -121,7 +121,7 @@ export const capitals = {
   cardIds(s) { … },                // which cards exist right now
   parse(id) { … },                 // an id back into a card, or null
   prompt(card) { … },              // { pill, lead, nodes }
-  answer(card) { … },              // { answer, sub?, source?, note? }
+  answer(card) { … },              // { answer, sub?, reply?, source?, note? }
   faces(card) { … },               // how it reads in the recap
   check(input, card) { … },        // a verdict, or null if not typable
 };
@@ -380,6 +380,8 @@ other way round.
 >
 > → **Combien ça coûte ?**
 > or C'est combien ? · Ça coûte combien ?
+> — Ça fait douze euros cinquante.
+> *That's twelve euros fifty.*
 
 English to French by default, because that is the direction a conversation
 asks for — you need to *say* it in the shop, not recognise it in a book. The
@@ -387,6 +389,12 @@ Direction control flips it to French → English for the half of a
 conversation that is said to you, which is why phrases like *Je peux vous
 aider ?* and *Plate ou gazeuse ?* are in there at all: you will never say
 them, but you will hear them.
+
+Every phrase that is a question comes with an answer to it — all 48 of
+them. Asking is the half you can rehearse; the half that happens at speed,
+in a shop, with someone waiting, is what comes back. So *Plate ou gazeuse ?*
+arrives with *Plate, s'il vous plaît*, and *Je peux vous aider ?* with *Non
+merci, je regarde*.
 
 Not idioms. The expressions deck holds the ones whose meaning you could
 never guess from the words; this holds the ordinary sentences whose words
