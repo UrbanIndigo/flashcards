@@ -326,6 +326,18 @@ button { font: inherit; }
 .paradigm tr.current td { background: var(--accent-soft); }
 .paradigm tr.current td:last-child { font-weight: 600; }
 
+/* The sentence in English, under the expression it explains. */
+.translation {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: var(--serif);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-align: left;
+}
+
 /* --------------------------------------------------------------- grading */
 
 /* Three buttons, told apart by colour before they are read: red is wrong,

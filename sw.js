@@ -25,6 +25,7 @@ const ASSETS = [
   'js/answer.js',
   'js/conjugator.js',
   'js/daily.js',
+  'js/expressions.js',
   'js/recap.js',
   'js/rules.js',
   'js/scheduler.js',

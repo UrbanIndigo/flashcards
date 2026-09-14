@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 96 expressions in context and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -336,6 +336,40 @@ node tools/extract-sentences.mjs path/to/texts > js/sentences.js
 
 Sentence ids are hashes of the sentence, so regenerating the corpus keeps
 your review history for any sentence that survives.
+
+### Expressions
+
+The third way of studying French here: **Study → Expressions** shows an
+idiom sitting in a sentence, and you say what it means.
+
+> Il pleut depuis une semaine et je commence à **avoir le cafard**.
+>
+> → **to be feeling down**
+> avoir le cafard
+> *Literally: to have the cockroach.*
+> Show the sentence in English →
+
+In a sentence rather than on its own, because an expression on its own is a
+dictionary entry. *Avoir le cafard* tells you nothing about how you will
+actually meet it — *il a le cafard*, *j'ai eu le cafard*, *ça me donne le
+cafard* — so every one of the 96 carries a sentence built around it, with the
+expression highlighted where it falls.
+
+These cards are **not typed**, even with typing switched on everywhere else.
+Translating an idiom has too many right answers to mark: *fed up*, *sick of
+it* and *had enough* are the same answer, and a card that marked one of them
+wrong would be teaching the wrong lesson. So the card shows the meaning and
+you grade yourself, which is what the three buttons were always for.
+
+Each entry carries the dictionary form, the literal reading — usually the
+reason it sticks, and the fun of the thing — and the register where it
+matters, since *avoir les boules* is not for a letter to your landlord. The
+English translation of the whole sentence sits behind a toggle, so working
+the meaning out of the sentence comes first.
+
+Five themes to filter by — Everyday, Feelings, People, Work, Trouble — and
+its own daily allowance, so an evening of idioms does not eat the
+conjugation twenty.
 
 ### The recap
 
