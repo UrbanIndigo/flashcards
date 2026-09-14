@@ -26,6 +26,7 @@ import {
   SENTENCES as EVERYDAY, SENTENCE_BY_ID as EVERYDAY_BY_ID, sentencesForBands,
 } from '../everyday.js';
 import { BANDS, WORDS } from '../common-words.js';
+import { MESSAGES, MESSAGE_BY_ID, TAGS, messagesForTags } from '../messages.js';
 
 const STUDY = [
   ['conjugation', 'Conjugation', 'Drill the forms'],
@@ -34,6 +35,7 @@ const STUDY = [
   ['phrases', 'Phrases', 'Everyday sentences'],
   ['gaps', 'Little words', 'en, y, dont — fill the gap'],
   ['everyday', 'Sentences', 'A thousand ordinary ones'],
+  ['messages', 'Messages', 'French as it is actually typed'],
 ];
 
 const DIRECTIONS = [
@@ -57,7 +59,16 @@ const sideOf = ({ phrase, side }) => (side === 'reply'
 
 /** Cards there is no honest way to mark, so you grade them yourself. */
 const SELF_GRADED = new Set([
-  'expression', 'phrase', 'phrase-meaning', 'everyday', 'everyday-meaning',
+  'expression', 'phrase', 'phrase-meaning', 'everyday', 'everyday-meaning', 'message',
+]);
+
+/**
+ * Cards that are already the whole of themselves. An expression is not one
+ * of these: its sentence has an English translation worth holding back until
+ * you have worked at it.
+ */
+const NOTHING_HELD_BACK = new Set([
+  'phrase', 'phrase-meaning', 'gap', 'everyday', 'everyday-meaning', 'message',
 ]);
 
 const CORRECT = { level: 'correct', message: 'Correct' };
@@ -88,6 +99,7 @@ const DAILY_KEYS = {
   phrases: 'conjugaison.daily.phrases.v1',
   gaps: 'conjugaison.daily.gaps.v1',
   everyday: 'conjugaison.daily.everyday.v1',
+  messages: 'conjugaison.daily.messages.v1',
 };
 
 // A forward card keeps its three-part id, so review history recorded before
@@ -120,6 +132,7 @@ export const french = {
     topics: [...TOPICS],
     patterns: [...PATTERNS],
     bands: BANDS.map((band) => band.id),
+    tags: [...TAGS],
   },
 
   keys(s) {
@@ -159,6 +172,8 @@ export const french = {
     if (!s.patterns.length) s.patterns = [...this.defaults.patterns];
     s.bands = (s.bands ?? []).filter((b) => BANDS.some((band) => band.id === b));
     if (!s.bands.length) s.bands = [...this.defaults.bands];
+    s.tags = (s.tags ?? []).filter((t) => TAGS.includes(t));
+    if (!s.tags.length) s.tags = [...this.defaults.tags];
   },
 
   filters(s) {
@@ -169,6 +184,21 @@ export const french = {
       type: 'radio',
       options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
     };
+
+    // Only one way round: reading these is the skill. Nobody needs drilling
+    // in how to leave out their own commas.
+    if (s.study === 'messages') {
+      return [study, {
+        id: 'tags',
+        legend: 'What makes it hard',
+        type: 'checkbox',
+        options: TAGS.map((tag) => ({
+          value: tag,
+          label: tag,
+          hint: `${MESSAGES.filter((m) => m.tag === tag).length}`,
+        })),
+      }];
+    }
 
     // A thousand sentences is more than anyone wants in one pool, so they
     // are banded by how common the word they are built around is.
@@ -280,6 +310,9 @@ export const french = {
     if (s.study === 'gaps') {
       return gapsForPatterns(s.patterns).map((gap) => `gap|${gap.id}`);
     }
+    if (s.study === 'messages') {
+      return messagesForTags(s.tags).map((message) => `msg|${message.id}`);
+    }
     if (s.study === 'everyday') {
       const ways = s.direction === 'mix' ? ['produce', 'recognise'] : [s.direction];
       for (const sentence of sentencesForBands(s.bands)) {
@@ -327,6 +360,10 @@ export const french = {
   },
 
   parse(id) {
+    if (id.startsWith('msg|')) {
+      const message = MESSAGE_BY_ID.get(id.slice('msg|'.length));
+      return message ? { direction: 'message', message } : null;
+    }
     if (id.startsWith('day|')) {
       const [, key, mark] = id.split('|');
       const everyday = EVERYDAY_BY_ID.get(key);
@@ -380,6 +417,15 @@ export const french = {
 
   prompt(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'message') {
+      return {
+        pill: 'Message',
+        lead: 'What does this mean?',
+        prose: true,
+        nodes: [text(card.message.msg)],
+      };
+    }
 
     if (direction === 'everyday' || direction === 'everyday-meaning') {
       const { fr, en } = card.everyday;
@@ -465,6 +511,17 @@ export const french = {
 
   answer(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'message') {
+      const { en, tidy, note: why } = card.message;
+      return {
+        answer: en,
+        // The same sentence written out properly, which is usually where the
+        // penny drops: the words were never the problem.
+        sub: tidy,
+        note: why,
+      };
+    }
 
     if (direction === 'everyday' || direction === 'everyday-meaning') {
       const { fr, en, word, rank } = card.everyday;
@@ -557,9 +614,7 @@ export const french = {
   /** The whole six-person paradigm, on request — or the sentence in English. */
   extra(card) {
     // A phrase, or a gap, is already the whole of itself: nothing held back.
-    if (['phrase', 'phrase-meaning', 'gap', 'everyday', 'everyday-meaning'].includes(card.direction)) {
-      return null;
-    }
+    if (NOTHING_HELD_BACK.has(card.direction)) return null;
 
     if (card.direction === 'expression') {
       const line = document.createElement('p');
@@ -585,6 +640,7 @@ export const french = {
     if (direction === 'expression') {
       return { question: card.expression.fr, answer: card.expression.en };
     }
+    if (direction === 'message') return { question: card.message.msg, answer: card.message.en };
     if (direction === 'everyday' || direction === 'everyday-meaning') {
       const { fr, en } = card.everyday;
       return direction === 'everyday' ? { question: en, answer: fr } : { question: fr, answer: en };

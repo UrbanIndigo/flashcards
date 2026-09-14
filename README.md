@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 1,000 everyday sentences covering the 500 commonest words, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 1,000 everyday sentences covering the 500 commonest words, 60 real-world messages, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -370,6 +370,37 @@ the meaning out of the sentence comes first.
 Five themes to filter by — Everyday, Feelings, People, Work, Trouble — and
 its own daily allowance, so an evening of idioms does not eat the
 conjugation twenty.
+
+### Messages
+
+**Study → Messages** is French as it actually arrives on your phone.
+
+> mais en vrai comme tu viens de lire le livre le film va te décevoir
+>
+> → **But honestly, since you've just read the book, the film is going to
+> disappoint you.**
+> Mais en vrai, comme tu viens de lire le livre, le film va te décevoir.
+> *comme at the head of a sentence means since, not like. The commas that
+> would show where its clause ends are the first thing to go in a message.*
+
+Everything else here is written French; even the phrasebook is tidy. This is
+the register nothing teaches you: no commas, half the negatives missing,
+letters dropped where nobody says them, and two or three filler words a
+sentence carrying real meaning.
+
+The hard part is almost never vocabulary. That message uses eleven words you
+already know. What defeats you is the missing comma, which is why the answer
+shows the same sentence written out properly — that is usually where the
+penny drops — and the note names the one thing that made it hard.
+
+Sixty of them, tagged by what the difficulty actually is: **Since and so**
+(comme, du coup, vu que, alors que), **Fillers** (en vrai, genre, grave,
+quoi, bref), **Dropped letters** (t'as, y a, faut, jsuis, chais pas), **No
+ne** (spoken French drops it almost always), and **Texting** (slt, mdr, tkt,
+stp, bcp).
+
+One way round only: reading these is the skill, and nobody needs drilling in
+how to leave out their own commas.
 
 ### Sentences
 

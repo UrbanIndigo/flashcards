@@ -29,6 +29,7 @@ const ASSETS = [
   'js/everyday.js',
   'js/expressions.js',
   'js/gaps.js',
+  'js/messages.js',
   'js/phrases.js',
   'js/recap.js',
   'js/rules.js',
