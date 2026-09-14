@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 1,000 everyday sentences covering the 500 commonest words, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -370,6 +370,37 @@ the meaning out of the sentence comes first.
 Five themes to filter by — Everyday, Feelings, People, Work, Trouble — and
 its own daily allowance, so an evening of idioms does not eat the
 conjugation twenty.
+
+### Sentences
+
+**Study → Sentences** is the volume deck: a thousand plain sentences, two
+for every word in a list of the five hundred worth knowing.
+
+> I live on this street.
+>
+> → **J'habite dans cette rue.**
+> rue · #160 of 500
+
+Two rather than one because a word met once is a word you have seen, and a
+word met in two different sentences is a word you are starting to own — *je
+pense à toi* and *qu'est-ce que tu en penses ?* are the same verb doing
+different work. Short on purpose: nothing over eleven words, so a card can
+be answered before the bus comes.
+
+The word list in `js/common-words.js` is a frequency list with the pure glue
+taken out. *De*, *le*, *à* and *un* are the commonest words in French and no
+sentence can usefully *feature* any of them; they turn up in almost every
+sentence here anyway. What is left is the vocabulary you would be pleased to
+recognise, banded so a session can be kept to the first hundred.
+
+The coverage is checked rather than claimed. A test fails if any of the five
+hundred loses a sentence, and a second one fails if a word never actually
+appears in either of its own examples — which caught six irregular verbs
+whose sentences had quietly conjugated them out of sight (*il faut* for
+*falloir*, *elle vient* for *venir*), now rewritten so each shows its word.
+
+Both ways round, and graded by you: a whole sentence has too many right
+translations to mark.
 
 ### Phrases
 

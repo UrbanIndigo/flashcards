@@ -25,6 +25,8 @@ const ASSETS = [
   'js/answer.js',
   'js/conjugator.js',
   'js/daily.js',
+  'js/common-words.js',
+  'js/everyday.js',
   'js/expressions.js',
   'js/gaps.js',
   'js/phrases.js',

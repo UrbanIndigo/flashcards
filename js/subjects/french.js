@@ -22,6 +22,10 @@ import { SENTENCES, WORKS } from '../sentences.js';
 import { EXPRESSIONS, EXPRESSION_BY_ID, THEMES, expressionsForThemes } from '../expressions.js';
 import { PHRASES, PHRASE_BY_ID, TOPICS, phrasesForTopics } from '../phrases.js';
 import { GAPS, GAP_BY_ID, PATTERNS, gapsForPatterns } from '../gaps.js';
+import {
+  SENTENCES as EVERYDAY, SENTENCE_BY_ID as EVERYDAY_BY_ID, sentencesForBands,
+} from '../everyday.js';
+import { BANDS, WORDS } from '../common-words.js';
 
 const STUDY = [
   ['conjugation', 'Conjugation', 'Drill the forms'],
@@ -29,6 +33,7 @@ const STUDY = [
   ['expressions', 'Expressions', 'Idioms in a sentence'],
   ['phrases', 'Phrases', 'Everyday sentences'],
   ['gaps', 'Little words', 'en, y, dont — fill the gap'],
+  ['everyday', 'Sentences', 'A thousand ordinary ones'],
 ];
 
 const DIRECTIONS = [
@@ -38,15 +43,22 @@ const DIRECTIONS = [
 ];
 
 // The same setting, since it is the same question — can you produce it, or
-// only recognise it — but a phrase needs its own words for it.
-const PHRASE_DIRECTIONS = [
+// only recognise it — but a sentence needs its own words for it.
+const SAY_DIRECTIONS = [
   ['produce', 'Say it in French', 'English → French'],
   ['recognise', 'Say what it means', 'French → English'],
   ['mix', 'Mix both', 'alternates between the two'],
 ];
 
+/** Which half of the exchange a phrase card is asking about. */
+const sideOf = ({ phrase, side }) => (side === 'reply'
+  ? { fr: phrase.reply, en: phrase.replyEn }
+  : { fr: phrase.fr, en: phrase.en });
+
 /** Cards there is no honest way to mark, so you grade them yourself. */
-const SELF_GRADED = new Set(['expression', 'phrase', 'phrase-meaning']);
+const SELF_GRADED = new Set([
+  'expression', 'phrase', 'phrase-meaning', 'everyday', 'everyday-meaning',
+]);
 
 const CORRECT = { level: 'correct', message: 'Correct' };
 const ACCENTS = { level: 'close', message: 'Almost — check the accents' };
@@ -75,6 +87,7 @@ const DAILY_KEYS = {
   expressions: 'conjugaison.daily.expressions.v1',
   phrases: 'conjugaison.daily.phrases.v1',
   gaps: 'conjugaison.daily.gaps.v1',
+  everyday: 'conjugaison.daily.everyday.v1',
 };
 
 // A forward card keeps its three-part id, so review history recorded before
@@ -95,7 +108,7 @@ function span(className, content) {
 export const french = {
   id: 'french',
   label: 'French verbs',
-  hint: 'Conjugation, expressions, phrases and reading',
+  hint: 'Conjugation, sentences, expressions and reading',
 
   defaults: {
     study: 'conjugation',
@@ -106,6 +119,7 @@ export const french = {
     themes: [...THEMES],
     topics: [...TOPICS],
     patterns: [...PATTERNS],
+    bands: BANDS.map((band) => band.id),
   },
 
   keys(s) {
@@ -143,6 +157,8 @@ export const french = {
     if (!s.topics.length) s.topics = [...this.defaults.topics];
     s.patterns = (s.patterns ?? []).filter((p) => PATTERNS.includes(p));
     if (!s.patterns.length) s.patterns = [...this.defaults.patterns];
+    s.bands = (s.bands ?? []).filter((b) => BANDS.some((band) => band.id === b));
+    if (!s.bands.length) s.bands = [...this.defaults.bands];
   },
 
   filters(s) {
@@ -153,6 +169,26 @@ export const french = {
       type: 'radio',
       options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
     };
+
+    // A thousand sentences is more than anyone wants in one pool, so they
+    // are banded by how common the word they are built around is.
+    if (s.study === 'everyday') {
+      return [study, {
+        id: 'bands',
+        legend: 'Words',
+        type: 'checkbox',
+        options: BANDS.map((band) => ({
+          value: band.id,
+          label: band.label,
+          hint: band.hint,
+        })),
+      }, {
+        id: 'direction',
+        legend: 'Direction',
+        type: 'radio',
+        options: SAY_DIRECTIONS.map(([value, label, hint]) => ({ value, label, hint })),
+      }];
+    }
 
     // A little word is learnt by meeting it, not by being told a rule, so
     // the only thing to choose is which ones you are meeting.
@@ -186,7 +222,7 @@ export const french = {
         id: 'direction',
         legend: 'Direction',
         type: 'radio',
-        options: PHRASE_DIRECTIONS.map(([value, label, hint]) => ({ value, label, hint })),
+        options: SAY_DIRECTIONS.map(([value, label, hint]) => ({ value, label, hint })),
       }];
     }
 
@@ -244,13 +280,27 @@ export const french = {
     if (s.study === 'gaps') {
       return gapsForPatterns(s.patterns).map((gap) => `gap|${gap.id}`);
     }
+    if (s.study === 'everyday') {
+      const ways = s.direction === 'mix' ? ['produce', 'recognise'] : [s.direction];
+      for (const sentence of sentencesForBands(s.bands)) {
+        for (const way of ways) ids.push(`day|${sentence.id}${way === 'recognise' ? '|r' : ''}`);
+      }
+      return ids;
+    }
     if (s.study === 'expressions') {
       return expressionsForThemes(s.themes).map((expression) => `expr|${expression.id}`);
     }
     if (s.study === 'phrases') {
       const ways = s.direction === 'mix' ? ['produce', 'recognise'] : [s.direction];
       for (const phrase of phrasesForTopics(s.topics)) {
-        for (const way of ways) ids.push(`phrase|${phrase.id}${way === 'recognise' ? '|r' : ''}`);
+        // The answer to a question is as much worth saying as the question:
+        // "no thanks, I'm just looking" is the half you will actually need.
+        const sides = phrase.reply ? ['', 'a'] : [''];
+        for (const side of sides) {
+          for (const way of ways) {
+            ids.push(`phrase|${phrase.id}|${side}${way === 'recognise' ? 'r' : ''}`.replace(/\|$/, ''));
+          }
+        }
       }
       return ids;
     }
@@ -277,15 +327,28 @@ export const french = {
   },
 
   parse(id) {
+    if (id.startsWith('day|')) {
+      const [, key, mark] = id.split('|');
+      const everyday = EVERYDAY_BY_ID.get(key);
+      if (!everyday) return null;
+      return { direction: mark === 'r' ? 'everyday-meaning' : 'everyday', everyday };
+    }
     if (id.startsWith('gap|')) {
       const gap = GAP_BY_ID.get(id.slice('gap|'.length));
       return gap ? { direction: 'gap', gap } : null;
     }
     if (id.startsWith('phrase|')) {
-      const [, key, mark] = id.split('|');
+      const [, key, mark = ''] = id.split('|');
       const phrase = PHRASE_BY_ID.get(key);
       if (!phrase) return null;
-      return { direction: mark === 'r' ? 'phrase-meaning' : 'phrase', phrase };
+      // "a" for the answer to it; the trailing "r" is the way round.
+      const side = mark.startsWith('a') ? 'reply' : 'ask';
+      if (side === 'reply' && !phrase.reply) return null;
+      return {
+        direction: mark.endsWith('r') ? 'phrase-meaning' : 'phrase',
+        phrase,
+        side,
+      };
     }
     if (id.startsWith('expr|')) {
       const expression = EXPRESSION_BY_ID.get(id.slice('expr|'.length));
@@ -318,6 +381,13 @@ export const french = {
   prompt(card) {
     const { verb, tense, person, direction } = card;
 
+    if (direction === 'everyday' || direction === 'everyday-meaning') {
+      const { fr, en } = card.everyday;
+      return direction === 'everyday'
+        ? { pill: 'In French?', lead: 'How would you say this?', question: true, nodes: [text(en)] }
+        : { pill: 'Sentence', lead: 'What does this mean?', question: true, nodes: [text(fr)] };
+    }
+
     if (direction === 'gap') {
       const { text: sentence, start, end } = card.gap;
       return {
@@ -330,21 +400,22 @@ export const french = {
       };
     }
 
-    if (direction === 'phrase') {
+    if (direction === 'phrase' || direction === 'phrase-meaning') {
+      const said = sideOf(card);
+      const answering = card.side === 'reply';
+      if (direction === 'phrase') {
+        return {
+          pill: 'In French?',
+          lead: answering ? 'How would you answer?' : 'How would you say this?',
+          question: true,
+          nodes: [text(said.en)],
+        };
+      }
       return {
-        pill: 'In French?',
-        lead: 'How would you say this?',
-        question: true,
-        nodes: [text(card.phrase.en)],
-      };
-    }
-
-    if (direction === 'phrase-meaning') {
-      return {
-        pill: 'Everyday phrase',
+        pill: answering ? 'The answer you get' : 'Everyday phrase',
         lead: 'What does this mean?',
         question: true,
-        nodes: [text(card.phrase.fr)],
+        nodes: [text(said.fr)],
       };
     }
 
@@ -395,6 +466,16 @@ export const french = {
   answer(card) {
     const { verb, tense, person, direction } = card;
 
+    if (direction === 'everyday' || direction === 'everyday-meaning') {
+      const { fr, en, word, rank } = card.everyday;
+      return {
+        answer: direction === 'everyday' ? fr : en,
+        // Which of the five hundred this sentence was built around, and how
+        // far up the list it sits.
+        sub: `${word} · #${rank + 1} of ${WORDS.length}`,
+      };
+    }
+
     if (direction === 'gap') {
       const { gap: missing, text: sentence, also, note: rule } = card.gap;
       return {
@@ -406,6 +487,17 @@ export const french = {
 
     if (direction === 'phrase' || direction === 'phrase-meaning') {
       const { fr, en, alt, register, note: usage, reply, replyEn } = card.phrase;
+      const said = sideOf(card);
+
+      // An answer card stands on its own, so it says what it is answering
+      // rather than carrying the question's alternatives and notes.
+      if (card.side === 'reply') {
+        return {
+          answer: direction === 'phrase' ? said.fr : said.en,
+          sub: `in reply to: ${fr}`,
+        };
+      }
+
       // There is usually more than one way to say it, and knowing the others
       // is most of the point.
       const others = alt?.length ? `or ${alt.join(' · ')}` : '';
@@ -465,7 +557,9 @@ export const french = {
   /** The whole six-person paradigm, on request — or the sentence in English. */
   extra(card) {
     // A phrase, or a gap, is already the whole of itself: nothing held back.
-    if (['phrase', 'phrase-meaning', 'gap'].includes(card.direction)) return null;
+    if (['phrase', 'phrase-meaning', 'gap', 'everyday', 'everyday-meaning'].includes(card.direction)) {
+      return null;
+    }
 
     if (card.direction === 'expression') {
       const line = document.createElement('p');
@@ -491,12 +585,20 @@ export const french = {
     if (direction === 'expression') {
       return { question: card.expression.fr, answer: card.expression.en };
     }
+    if (direction === 'everyday' || direction === 'everyday-meaning') {
+      const { fr, en } = card.everyday;
+      return direction === 'everyday' ? { question: en, answer: fr } : { question: fr, answer: en };
+    }
     if (direction === 'gap') {
       const { text: sentence, start, end, gap: missing } = card.gap;
       return { question: `${sentence.slice(0, start)}___${sentence.slice(end)}`, answer: missing };
     }
-    if (direction === 'phrase') return { question: card.phrase.en, answer: card.phrase.fr };
-    if (direction === 'phrase-meaning') return { question: card.phrase.fr, answer: card.phrase.en };
+    if (direction === 'phrase' || direction === 'phrase-meaning') {
+      const said = sideOf(card);
+      return direction === 'phrase'
+        ? { question: said.en, answer: said.fr }
+        : { question: said.fr, answer: said.en };
+    }
     if (direction === 'reading') {
       return {
         question: sentence.text.slice(sentence.start, sentence.end),
