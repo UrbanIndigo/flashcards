@@ -4,6 +4,11 @@ import { existsSync, readFileSync } from 'node:fs';
 
 import { geography } from '../js/subjects/geography.js';
 import { COUNTRIES, REGIONS } from '../js/subjects/geography-data.js';
+import { SHAPES, SHAPE_BOX } from '../js/subjects/shapes-data.js';
+import { BORDERS, OVERSEAS } from '../js/subjects/borders-data.js';
+
+const BY_CODE = new Map(COUNTRIES.map((c) => [c.code, c]));
+const namesFor = (code) => BORDERS[code].map((c) => BY_CODE.get(c).name).sort();
 
 const settings = (over = {}) => {
   const s = { ...geography.defaults, ...over };
@@ -205,4 +210,173 @@ test('punctuation and accents do not decide a geography answer', () => {
   assert.equal(geography.check('Reykjavík', geography.parse('cap|IS')).level, 'correct');
   // Knowing the place is still the bar.
   assert.equal(geography.check('Oslo', geography.parse('cap|IS')).level, 'wrong');
+});
+
+test('country outlines are drawn from real geometry, at a size that can ship', () => {
+  const codes = Object.keys(SHAPES);
+  assert.ok(codes.length > 165, `only ${codes.length} outlines`);
+  for (const [code, path] of Object.entries(SHAPES)) {
+    assert.ok(BY_CODE.has(code), `outline for an unknown country: ${code}`);
+    assert.match(path, /^M-?\d+ -?\d+l[-\d ]+Z/, code);
+    // Every coordinate has to land inside the box the SVG declares.
+    for (const value of path.match(/-?\d+/g).slice(0, 2)) {
+      assert.ok(Number(value) >= 0 && Number(value) <= SHAPE_BOX, `${code}: ${value}`);
+    }
+  }
+  // Precached on a phone alongside half a megabyte of flags, so it has to
+  // stay a shape library rather than a map.
+  const bytes = readFileSync(new URL('../js/subjects/shapes-data.js', import.meta.url)).length;
+  assert.ok(bytes < 220 * 1024, `${Math.round(bytes / 1024)}KB of outlines`);
+});
+
+test('countries too small to have an outline are left out of that deck', () => {
+  // Monaco is two square kilometres: its outline is a squiggle, not a shape.
+  for (const code of ['MC', 'VA', 'SM', 'SG', 'MT', 'MV']) {
+    assert.equal(SHAPES[code], undefined, code);
+    assert.equal(geography.parse(`map|${code}`), null, code);
+  }
+  for (const code of ['LU', 'CY', 'JM', 'QA', 'BN']) assert.ok(SHAPES[code], code);
+  assert.ok(!geography.cardIds(settings({ decks: ['shapes'] })).includes('map|MC'));
+});
+
+test('borders are symmetric, because a border has two sides', () => {
+  for (const [code, list] of Object.entries(BORDERS)) {
+    assert.equal(new Set(list).size, list.length, `${code} repeats a neighbour`);
+    for (const other of list) {
+      assert.ok(BY_CODE.has(other), `${code} borders an unknown country: ${other}`);
+      assert.ok(BORDERS[other]?.includes(code), `${code} borders ${other} but not the other way`);
+    }
+  }
+  for (const [code, { also }] of Object.entries(OVERSEAS)) {
+    for (const other of also) {
+      assert.ok(OVERSEAS[other]?.also.includes(code), `${code}-${other} is one-sided`);
+      assert.ok(!BORDERS[code]?.includes(other), `${code}-${other} is counted twice`);
+    }
+  }
+});
+
+test('the borders match the map anyone would draw from memory', () => {
+  assert.deepEqual(namesFor('PT'), ['Spain']);
+  assert.deepEqual(namesFor('GB'), ['Ireland']);
+  assert.deepEqual(namesFor('US'), ['Canada', 'Mexico']);
+  assert.deepEqual(
+    namesFor('FR'),
+    ['Andorra', 'Belgium', 'Germany', 'Italy', 'Luxembourg', 'Monaco', 'Spain', 'Switzerland'],
+  );
+  assert.equal(BORDERS.CN.length, 14);
+  assert.equal(BORDERS.RU.length, 14);
+  // An island is not asked at all: forty cards whose answer is "none" would
+  // only teach you to type "none".
+  for (const code of ['JP', 'IS', 'AU', 'NZ', 'MG', 'CU']) {
+    assert.equal(BORDERS[code], undefined, code);
+    assert.equal(geography.parse(`bd|${code}`), null, code);
+  }
+});
+
+test('a border through an overseas territory is accepted but never required', () => {
+  // France really does border Brazil, along French Guiana. Nobody listing
+  // the countries around France means Brazil, and nobody is wrong to.
+  const france = geography.parse('bd|FR');
+  const full = 'Belgium, Luxembourg, Germany, Switzerland, Italy, Monaco, Spain, Andorra';
+  assert.equal(geography.check(full, france).level, 'correct');
+  assert.equal(geography.check(`${full}, Brazil, Suriname`, france).level, 'correct');
+  assert.equal(geography.check(`${full}, Portugal`, france).level, 'close');
+  assert.ok(geography.answer(france).note.includes('French Guiana'));
+  assert.equal(geography.check('Brazil, Guyana, France', geography.parse('bd|SR')).level, 'correct');
+});
+
+test('a list of neighbours is marked as a set, however it is written', () => {
+  const poland = geography.parse('bd|PL');
+  const all = 'Germany, Czechia, Slovakia, Ukraine, Belarus, Lithuania, Russia';
+  assert.equal(geography.check(all, poland).level, 'correct');
+  assert.equal(geography.check(all.split(', ').reverse().join('; '), poland).level, 'correct');
+  assert.equal(geography.check(all.replaceAll(', ', '\n'), poland).level, 'correct');
+  assert.equal(geography.check(all.toLowerCase(), poland).level, 'correct');
+  // The last two written as people write them.
+  assert.equal(geography.check(all.replace(', Russia', ' and Russia'), poland).level, 'correct');
+  // Aliases work here too.
+  assert.equal(geography.check(all.replace('Czechia', 'Czech Republic'), poland).level, 'correct');
+});
+
+test('a country whose name contains "and" is not split down the middle', () => {
+  const croatia = geography.parse('bd|HR');
+  assert.equal(
+    geography.check('Slovenia, Hungary, Serbia, Bosnia and Herzegovina, Montenegro', croatia).level,
+    'correct',
+  );
+  assert.equal(
+    geography.check('Slovenia and Hungary and Serbia and Bosnia and Herzegovina and Montenegro', croatia).level,
+    'correct',
+  );
+});
+
+test('a partial list of neighbours says what was missed', () => {
+  const poland = geography.parse('bd|PL');
+  const six = 'Germany, Czechia, Slovakia, Ukraine, Belarus, Lithuania';
+  assert.deepEqual(geography.check(six, poland), { level: 'close', message: 'Missed Russia' });
+  // Most of a long list is a near miss; two out of seven is not.
+  assert.equal(geography.check('Germany, Czechia', poland).level, 'wrong');
+  assert.match(geography.check('Germany, Czechia', poland).message, /Missed 5 of them/);
+  assert.equal(geography.check('', poland).level, 'wrong');
+});
+
+test('naming a country that is nowhere near is a different mistake', () => {
+  const portugal = geography.parse('bd|PT');
+  assert.deepEqual(
+    geography.check('Spain, France', portugal),
+    { level: 'close', message: 'Not a neighbour: France' },
+  );
+  assert.equal(geography.check('France', portugal).level, 'wrong', 'wrong and incomplete');
+  assert.match(geography.check('Spain, Atlantis', portugal).message, /Atlantis/);
+});
+
+test('all four decks can be studied together without their ids colliding', () => {
+  const all = settings({ decks: ['flags', 'capitals', 'shapes', 'borders'], direction: 'mix' });
+  const ids = geography.cardIds(all);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.equal(
+    ids.length,
+    COUNTRIES.length * 3 + Object.keys(SHAPES).length + Object.keys(BORDERS).length,
+  );
+  for (const id of ids) assert.ok(geography.parse(id), `unparseable: ${id}`);
+  // Bangladesh's flag card and the borders prefix are not the same string.
+  assert.equal(geography.parse('BD').deck.id, 'flags');
+  assert.equal(geography.parse('bd|BD').deck.id, 'borders');
+});
+
+test('every card in every deck can be typed and marked', () => {
+  const all = settings({ decks: ['flags', 'capitals', 'shapes', 'borders'], direction: 'mix' });
+  for (const id of geography.cardIds(all)) {
+    const card = geography.parse(id);
+    assert.equal(geography.typable(card), true, id);
+    assert.notEqual(geography.check('something', card), null, id);
+    assert.ok(geography.answer(card).answer, `no answer: ${id}`);
+    assert.ok(geography.faces(card).question, `no recap wording: ${id}`);
+  }
+});
+
+test('the region counts follow the decks that are on', () => {
+  const regions = (decks) => Object.fromEntries(
+    geography.filters(settings({ decks })).find((f) => f.id === 'regions')
+      .options.map((o) => [o.value, Number(o.hint)]),
+  );
+  const all = COUNTRIES.filter((c) => c.region === 'Oceania').length;
+  assert.equal(regions(['flags']).Oceania, all);
+  // Papua New Guinea is the only country in Oceania with a land border, and
+  // saying so beats an empty session with no explanation.
+  assert.equal(regions(['borders']).Oceania, 1);
+  assert.equal(regions(['flags', 'borders']).Oceania, all, 'a country counted once, not twice');
+});
+
+test('a country whose name wants an article gets one', () => {
+  // "This is Republic of the Congo" is not a sentence anybody would write.
+  // A question is built out of DOM nodes, which here need only hold text.
+  globalThis.document = { createElement: () => ({ textContent: '' }) };
+  const asked = (id) => geography.prompt(geography.parse(id)).nodes.map((n) => n.textContent).join('');
+  assert.equal(asked('bd|CG'), 'This is the Republic of the Congo. Which countries does it border?');
+  assert.equal(asked('bd|GB'), 'This is the United Kingdom. Which countries does it border?');
+  assert.equal(asked('bd|FR'), 'This is France. Which countries does it border?');
+  assert.equal(asked('cap|NL'), 'What is the capital of the Netherlands?');
+  assert.equal(asked('cap|JP'), 'What is the capital of Japan?');
+  delete globalThis.document;
 });

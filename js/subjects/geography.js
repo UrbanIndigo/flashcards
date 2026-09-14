@@ -1,5 +1,5 @@
 /**
- * Geography: flags, capitals, and whatever else gets added.
+ * Geography: flags, capitals, outlines, borders.
  *
  * One subject with several decks that can be studied together, rather than
  * one subject per deck — they share a country list, a set of regions and a
@@ -15,6 +15,8 @@
  */
 
 import { COUNTRIES, REGIONS } from './geography-data.js';
+import { SHAPES, SHAPE_BOX } from './shapes-data.js';
+import { BORDERS, OVERSEAS } from './borders-data.js';
 import { deaccent } from '../answer.js';
 
 const CORRECT = { level: 'correct', message: 'Correct' };
@@ -40,11 +42,96 @@ function graded(input, accepted) {
 const countryNames = (country) => [country.name, ...(country.aka ?? [])];
 const capitalNames = (country) => [country.capital, ...(country.capitalAka ?? [])];
 
+const BY_CODE = new Map(COUNTRIES.map((country) => [country.code, country]));
+const nameOf = (code) => BY_CODE.get(code).name;
+const namesOf = (codes) => codes.map(nameOf).sort((a, b) => a.localeCompare(b));
+
+const BY_NAME = new Map();
+for (const country of COUNTRIES) {
+  for (const name of countryNames(country)) BY_NAME.set(bare(name), country.code);
+}
+
+/** "Andorra, France and Spain", or a count once naming them all stops helping. */
+function listed(names) {
+  if (names.length > 3) return `${names.length} of them`;
+  if (names.length < 2) return names[0];
+  return `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
+}
+
+/**
+ * Splits a typed list of countries — without splitting Bosnia and
+ * Herzegovina down the middle. A chunk that is already a country is left
+ * alone, and only one that is not gets broken at "and".
+ */
+function split(input) {
+  const out = [];
+  for (const chunk of input.split(/[,;\n/]+/)) {
+    const piece = chunk.trim();
+    if (!piece) continue;
+    if (BY_NAME.has(bare(piece))) {
+      out.push(piece);
+      continue;
+    }
+    const parts = piece.split(/\s+and\s+|\s*&\s*/i).map((p) => p.trim()).filter(Boolean);
+    // "Serbia and Bosnia and Herzegovina" is two countries, not three: where
+    // two pieces spell a country, the "and" between them was never a
+    // separator.
+    for (let i = 0; i < parts.length; i += 1) {
+      const joined = `${parts[i]} and ${parts[i + 1]}`;
+      if (i + 1 < parts.length && BY_NAME.has(bare(joined))) {
+        out.push(joined);
+        i += 1;
+      } else {
+        out.push(parts[i]);
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * A list answer, marked as a set: order is not the question, and neither is
+ * how you separated them.
+ */
+function checkBorders(input, country) {
+  const required = BORDERS[country.code];
+  const allowed = new Set([...required, ...(OVERSEAS[country.code]?.also ?? [])]);
+  const answers = split(input ?? '');
+  if (!answers.length) return WRONG;
+
+  const found = new Set();
+  const wrong = [];
+  for (const answer of answers) {
+    const code = BY_NAME.get(bare(answer));
+    if (code && allowed.has(code)) found.add(code);
+    else wrong.push(code ? nameOf(code) : answer);
+  }
+  const missed = required.filter((code) => !found.has(code));
+
+  if (!missed.length && !wrong.length) return CORRECT;
+  if (wrong.length) {
+    // Naming a country that is nowhere near is a different mistake from
+    // stopping one short, and worth saying out loud.
+    return missed.length ? WRONG : { level: 'close', message: `Not a neighbour: ${listed(wrong)}` };
+  }
+  // Most of a long list is a near miss; a third of it is not.
+  const level = found.size * 2 >= required.length ? 'close' : 'wrong';
+  return { level, message: `Missed ${listed(namesOf(missed))}` };
+}
+
 function textNode(value) {
   const node = document.createElement('span');
   node.textContent = value;
   return node;
 }
+
+/**
+ * Countries whose name wants an article in a sentence: it is the Netherlands
+ * and the United Kingdom, but Spain and Japan.
+ */
+const ARTICLE = /\b(Republic|Kingdom|States|Emirates|Islands)\b/;
+const ALSO_THE = new Set(['Bahamas', 'Comoros', 'Gambia', 'Maldives', 'Netherlands', 'Philippines', 'Seychelles']);
+const the = (country) => (ARTICLE.test(country.name) || ALSO_THE.has(country.name) ? 'the ' : '');
 
 /** The variable part of a question, so the eye lands on it first. */
 function strong(value) {
@@ -64,19 +151,41 @@ function flagImage(country) {
   return img;
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+/** The outline, drawn in the page rather than fetched, so it takes the theme. */
+function shapeOutline(country) {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('class', 'shape-prompt');
+  svg.setAttribute('viewBox', `0 0 ${SHAPE_BOX} ${SHAPE_BOX}`);
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'The outline of a country');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', SHAPES[country.code]);
+  svg.append(path);
+  return svg;
+}
+
+const countable = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
 /**
  * The decks. `prefix` and `reverseMark` build the card ids: flags use a bare
  * country code and a "|n" suffix, which is what they used when flags was its
  * own subject, so that history still matches. Anything added later gets a
  * prefix of its own.
+ *
+ * `countries` is the deck's own share of the country list. Not every country
+ * has an outline worth guessing, and forty of them have no land border at
+ * all, so a deck says which ones it can ask about.
  */
 const DECKS = [
   {
     id: 'flags',
     label: 'Flags',
-    hint: '196 flags',
+    noun: 'flags',
     prefix: '',
     reverseMark: 'n',
+    countries: COUNTRIES,
     forward: {
       label: 'Name the country',
       hint: 'flag → country',
@@ -93,9 +202,10 @@ const DECKS = [
   {
     id: 'capitals',
     label: 'Capitals',
-    hint: '196 capitals',
+    noun: 'capitals',
     prefix: 'cap',
     reverseMark: 'r',
+    countries: COUNTRIES,
     forward: {
       label: 'Name the capital',
       hint: 'country → capital',
@@ -105,7 +215,7 @@ const DECKS = [
       prompt: (c) => ({
         pill: 'Which capital?',
         question: true,
-        nodes: [textNode('What is the capital of '), strong(c.name), textNode('?')],
+        nodes: [textNode(`What is the capital of ${the(c)}`), strong(c.name), textNode('?')],
       }),
       answer: (c) => ({ answer: c.capital, sub: `${c.name} · ${c.region}` }),
       faces: (c) => ({ question: c.name, answer: c.capital }),
@@ -125,10 +235,65 @@ const DECKS = [
       check: (input, c) => graded(input, countryNames(c)),
     },
   },
+  {
+    id: 'shapes',
+    label: 'Outlines',
+    noun: 'outlines',
+    prefix: 'map',
+    reverseMark: 'r',
+    countries: COUNTRIES.filter((c) => SHAPES[c.code]),
+    forward: {
+      label: 'Name the country',
+      hint: 'outline → country',
+      placeholder: 'country…',
+      prompt: (c) => ({
+        pill: 'Which country?',
+        lead: 'What country is this?',
+        nodes: [shapeOutline(c)],
+      }),
+      answer: (c) => ({ answer: c.name, sub: `capital: ${c.capital} · ${c.region}` }),
+      faces: (c) => ({ question: `${c.name}'s outline`, answer: c.name }),
+      check: (input, c) => graded(input, countryNames(c)),
+    },
+    // As with flags, drawing one from memory is not something the app could
+    // mark.
+  },
+  {
+    id: 'borders',
+    label: 'Borders',
+    noun: 'countries',
+    prefix: 'bd',
+    reverseMark: 'r',
+    countries: COUNTRIES.filter((c) => BORDERS[c.code]),
+    forward: {
+      label: 'List the neighbours',
+      hint: 'country → its borders',
+      placeholder: 'one, another, another…',
+      prompt: (c) => ({
+        pill: 'Which countries?',
+        question: true,
+        nodes: [
+          textNode(`This is ${the(c)}`), strong(c.name),
+          textNode('. Which countries does it border?'),
+        ],
+      }),
+      answer: (c) => ({
+        answer: namesOf(BORDERS[c.code]).join(', '),
+        sub: countable(BORDERS[c.code].length, 'land border', 'land borders'),
+        note: OVERSEAS[c.code]?.note,
+      }),
+      faces: (c) => ({ question: `${c.name}'s neighbours`, answer: namesOf(BORDERS[c.code]).join(', ') }),
+      check: checkBorders,
+    },
+  },
 ];
 
+for (const deck of DECKS) {
+  deck.has = new Set(deck.countries.map((c) => c.code));
+  deck.hint = `${deck.countries.length} ${deck.noun}`;
+}
+
 const DECK_BY_ID = new Map(DECKS.map((deck) => [deck.id, deck]));
-const BY_CODE = new Map(COUNTRIES.map((country) => [country.code, country]));
 
 const cardId = (deck, code, direction) => [deck.prefix, code, direction === 'reverse' ? deck.reverseMark : '']
   .filter(Boolean).join('|');
@@ -147,7 +312,7 @@ function availableDirections(decks) {
 export const geography = {
   id: 'geography',
   label: 'Geography',
-  hint: 'Flags and capitals',
+  hint: 'Flags, capitals, outlines, borders',
 
   defaults: {
     decks: ['flags'],
@@ -232,6 +397,11 @@ export const geography = {
         : { value: direction, ...describe(direction) })),
     };
 
+    // How many countries the chosen decks can ask about in a region, which
+    // is not the size of the region: only one country in Oceania has a
+    // land border.
+    const asked = new Set(chosen.flatMap((deck) => deck.countries));
+
     return [
       {
         id: 'decks',
@@ -246,7 +416,7 @@ export const geography = {
         options: REGIONS.map((region) => ({
           value: region,
           label: region,
-          hint: `${COUNTRIES.filter((c) => c.region === region).length}`,
+          hint: `${[...asked].filter((c) => c.region === region).length}`,
         })),
       },
       // A single way round is not a choice, so the control only appears when
@@ -262,7 +432,7 @@ export const geography = {
       const deck = DECK_BY_ID.get(deckId);
       for (const direction of directions) {
         if (!deck[direction]) continue;
-        for (const country of COUNTRIES) {
+        for (const country of deck.countries) {
           if (!s.regions.includes(country.region)) continue;
           ids.push(cardId(deck, country.code, direction));
         }
@@ -277,11 +447,12 @@ export const geography = {
     const deck = prefixed ?? DECK_BY_ID.get('flags');
     const code = prefixed ? parts[1] : parts[0];
     const country = BY_CODE.get(code);
-    if (!country) return null;
+    // A country the deck cannot ask about, or a direction it no longer has:
+    // the id is history from an older arrangement, and the app skips a card
+    // it cannot describe.
+    if (!country || !deck.has.has(code)) return null;
     const mark = prefixed ? parts[2] : parts[1];
     const direction = mark === deck.reverseMark ? 'reverse' : 'forward';
-    // A direction a deck no longer has: the id is history from an older
-    // arrangement, and the app skips a card it cannot describe.
     const side = deck[direction];
     if (!side) return null;
     return { country, deck, direction, side };

@@ -17,10 +17,12 @@ import {
 import { checkAnswer, checkRecognition, interpretationsOf } from '../answer.js';
 import { ruleFor } from '../rules.js';
 import { SENTENCES, WORKS } from '../sentences.js';
+import { EXPRESSIONS, EXPRESSION_BY_ID, THEMES, expressionsForThemes } from '../expressions.js';
 
 const STUDY = [
   ['conjugation', 'Conjugation', 'Drill the forms'],
   ['reading', 'Reading', 'Sentences from novels'],
+  ['expressions', 'Expressions', 'Idioms in a sentence'],
 ];
 
 const DIRECTIONS = [
@@ -30,6 +32,12 @@ const DIRECTIONS = [
 ];
 
 const SENTENCE_BY_ID = new Map(SENTENCES.map((sentence) => [sentence.id, sentence]));
+
+const DAILY_KEYS = {
+  conjugation: 'conjugaison.daily.v1',
+  reading: 'conjugaison.daily.reading.v1',
+  expressions: 'conjugaison.daily.expressions.v1',
+};
 
 // A forward card keeps its three-part id, so review history recorded before
 // reverse cards existed still matches; reverse cards get a "|r" suffix and
@@ -49,7 +57,7 @@ function span(className, content) {
 export const french = {
   id: 'french',
   label: 'French verbs',
-  hint: 'Conjugation and reading',
+  hint: 'Conjugation, reading and expressions',
 
   defaults: {
     study: 'conjugation',
@@ -57,14 +65,15 @@ export const french = {
     tenses: ['present', 'passe-compose', 'futur'],
     pronouns: [0, 1, 2, 3, 4, 5],
     direction: 'produce',
+    themes: [...THEMES],
   },
 
   keys(s) {
     return {
       progress: 'conjugaison.progress.v1',
-      // Reading and drilling keep separate daily tallies: they are different
-      // activities, and one should not eat the other's allowance.
-      daily: s.study === 'reading' ? 'conjugaison.daily.reading.v1' : 'conjugaison.daily.v1',
+      // Each way of studying keeps its own daily tally: they are different
+      // activities, and one should not eat the others' allowance.
+      daily: DAILY_KEYS[s.study] ?? 'conjugaison.daily.v1',
       log: 'conjugaison.log.v1',
     };
   },
@@ -72,8 +81,7 @@ export const french = {
   /** Every key this subject owns, so a reset clears all of it. */
   storageKeys: () => [
     'conjugaison.progress.v1',
-    'conjugaison.daily.v1',
-    'conjugaison.daily.reading.v1',
+    ...Object.values(DAILY_KEYS),
     'conjugaison.log.v1',
   ],
 
@@ -89,17 +97,36 @@ export const french = {
     if (!s.pronouns.length) s.pronouns = [...this.defaults.pronouns];
     if (!DIRECTIONS.some(([id]) => id === s.direction)) s.direction = this.defaults.direction;
     if (!STUDY.some(([id]) => id === s.study)) s.study = this.defaults.study;
+    s.themes = (s.themes ?? []).filter((t) => THEMES.includes(t));
+    if (!s.themes.length) s.themes = [...this.defaults.themes];
   },
 
   filters(s) {
     const reading = s.study === 'reading';
+    const study = {
+      id: 'study',
+      legend: 'Study',
+      type: 'radio',
+      options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
+    };
+
+    // An expression is not a verb in a tense, so none of the conjugation
+    // settings have anything to say about one.
+    if (s.study === 'expressions') {
+      return [study, {
+        id: 'themes',
+        legend: 'Themes',
+        type: 'checkbox',
+        options: THEMES.map((theme) => ({
+          value: theme,
+          label: theme,
+          hint: `${EXPRESSIONS.filter((e) => e.theme === theme).length}`,
+        })),
+      }];
+    }
+
     return [
-      {
-        id: 'study',
-        legend: 'Study',
-        type: 'radio',
-        options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
-      },
+      study,
       {
         id: 'deck',
         legend: 'Deck',
@@ -134,6 +161,9 @@ export const french = {
 
   cardIds(s) {
     const ids = [];
+    if (s.study === 'expressions') {
+      return expressionsForThemes(s.themes).map((expression) => `expr|${expression.id}`);
+    }
     if (s.study === 'reading') {
       // Sentence cards are not verb x tense x pronoun combinations, so the
       // pronoun filter has nothing to say about them; deck and tense still do.
@@ -157,6 +187,12 @@ export const french = {
   },
 
   parse(id) {
+    if (id.startsWith('expr|')) {
+      const expression = EXPRESSION_BY_ID.get(id.slice('expr|'.length));
+      // An expression that has since been reworded: the app skips a card it
+      // cannot describe rather than inventing one.
+      return expression ? { direction: 'expression', expression } : null;
+    }
     if (id.startsWith('sentence|')) {
       const sentence = SENTENCE_BY_ID.get(id.slice('sentence|'.length));
       if (!sentence) return null;
@@ -181,6 +217,18 @@ export const french = {
 
   prompt(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'expression') {
+      const { text: sentence, start, end } = card.expression;
+      const target = document.createElement('mark');
+      target.textContent = sentence.slice(start, end);
+      return {
+        pill: 'Expression',
+        lead: 'What does this mean?',
+        prose: true,
+        nodes: [text(sentence.slice(0, start)), target, text(sentence.slice(end))],
+      };
+    }
 
     if (direction === 'reading') {
       const { text: sentence, start, end } = card.sentence;
@@ -216,6 +264,17 @@ export const french = {
 
   answer(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'expression') {
+      const { fr, en, literal, register } = card.expression;
+      return {
+        answer: en,
+        sub: register ? `${fr} · ${register}` : fr,
+        // The word-for-word reading is usually the reason it sticks.
+        note: literal ? `Literally: ${literal}.` : undefined,
+      };
+    }
+
     const note = ruleFor(verb, tense, person);
 
     if (direction === 'reading') {
@@ -249,8 +308,15 @@ export const french = {
     return { answer: answerFor(verb, tense, person), note };
   },
 
-  /** The whole six-person paradigm, on request. */
+  /** The whole six-person paradigm, on request — or the sentence in English. */
   extra(card) {
+    if (card.direction === 'expression') {
+      const line = document.createElement('p');
+      line.className = 'translation';
+      line.textContent = card.expression.english;
+      return { label: 'the sentence in English', node: line };
+    }
+
     const { verb, tense, person } = card;
     const table = document.createElement('table');
     table.className = 'paradigm';
@@ -265,6 +331,9 @@ export const french = {
 
   faces(card) {
     const { verb, tense, person, direction, sentence } = card;
+    if (direction === 'expression') {
+      return { question: card.expression.fr, answer: card.expression.en };
+    }
     if (direction === 'reading') {
       return {
         question: sentence.text.slice(sentence.start, sentence.end),
@@ -280,7 +349,15 @@ export const french = {
     };
   },
 
+  /**
+   * An expression is shown and graded by you. "Fed up", "sick of it" and
+   * "had enough" are the same answer, and there is no honest way to mark the
+   * difference, so the card asks rather than tests.
+   */
+  typable: (card) => card.direction !== 'expression',
+
   check(input, card) {
+    if (card.direction === 'expression') return null;
     return card.direction === 'produce' ? checkAnswer(input, card) : checkRecognition(input, card);
   },
 
