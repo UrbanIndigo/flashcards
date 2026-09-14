@@ -12,6 +12,10 @@ const settings = (over = {}) => {
 
 const all = (over = {}) => french.cardIds(settings({ study: 'phrases', ...over }));
 
+// A question and the answer to it are two cards, so a topic is worth more
+// than the number of phrases in it.
+const cardsIn = (list) => list.length + list.filter((p) => p.reply).length;
+
 test('every phrase has both halves and a topic', () => {
   assert.ok(PHRASES.length > 90, `only ${PHRASES.length}`);
   for (const p of PHRASES) {
@@ -59,26 +63,31 @@ test('every topic is worth choosing on its own', () => {
 
 test('a phrase is asked English to French by default, since that is the useful way', () => {
   const ids = all();
-  assert.equal(ids.length, PHRASES.length);
-  assert.ok(ids.every((id) => !id.endsWith('|r')));
+  assert.equal(ids.length, cardsIn(PHRASES));
+  // Not endsWith('r'): plenty of phrases slug to an id ending in one, bonsoir
+  // among them. The way round lives in the mark after the id.
+  const mark = (id) => id.split('|')[2] ?? '';
+  assert.ok(ids.every((id) => !mark(id).endsWith('r')));
   assert.equal(french.parse(ids[0]).direction, 'phrase');
   assert.equal(settings({ study: 'phrases' }).direction, 'produce');
 
   // Hearing one said to you is the other half of a conversation.
   const back = all({ direction: 'recognise' });
-  assert.ok(back.every((id) => id.endsWith('|r')));
+  // "r" for a question, "ar" for the answer to one.
+  assert.ok(back.every((id) => mark(id).endsWith('r')));
+  assert.ok(back.some((id) => mark(id) === 'ar'), 'answers go both ways too');
   assert.equal(french.parse(back[0]).direction, 'phrase-meaning');
 
   const both = all({ direction: 'mix' });
-  assert.equal(both.length, PHRASES.length * 2);
+  assert.equal(both.length, cardsIn(PHRASES) * 2);
   assert.equal(new Set(both).size, both.length);
   for (const id of both) assert.ok(french.parse(id), `unparseable: ${id}`);
 });
 
 test('topics narrow the deck, and conjugation settings do not touch it', () => {
   const shopping = all({ topics: ['Shopping'] });
-  assert.equal(shopping.length, phrasesForTopics(['Shopping']).length);
-  assert.ok(shopping.length < PHRASES.length);
+  assert.equal(shopping.length, cardsIn(phrasesForTopics(['Shopping'])));
+  assert.ok(shopping.length < cardsIn(PHRASES));
   assert.equal(
     all({ topics: ['Shopping'], tenses: ['present'], pronouns: [0], deck: 'core' }).length,
     shopping.length,
@@ -187,4 +196,38 @@ test('the reply is shown with the answer, both ways round', () => {
     assert.equal(Boolean(spec.reply), Boolean(p.reply), p.id);
     if (spec.reply) assert.ok(spec.reply.text && spec.reply.gloss, p.id);
   }
+});
+
+test('the answer to a question is a card in its own right', () => {
+  // "No thank you, I'm just looking" is the half you actually have to say.
+  const reply = french.parse('phrase|je-peux-vous-aider|a');
+  assert.equal(reply.side, 'reply');
+  assert.equal(french.answer(reply).answer, 'Non merci, je regarde.');
+  // Taken from the data rather than retyped: the space before the question
+  // mark is a non-breaking one and would not survive being written out here.
+  const asked = PHRASES.find((p) => p.id === 'je-peux-vous-aider');
+  assert.equal(french.answer(reply).sub, `in reply to: ${asked.fr}`);
+  assert.deepEqual(french.faces(reply), {
+    question: 'No thank you, I’m just looking.',
+    answer: 'Non merci, je regarde.',
+  });
+
+  globalThis.document = {
+    createElement: () => ({ className: '', textContent: '' }),
+    createTextNode: (value) => ({ textContent: value }),
+  };
+  assert.equal(french.prompt(reply).lead, 'How would you answer?');
+  assert.equal(french.prompt(reply).nodes[0].textContent, 'No thank you, I’m just looking.');
+  // And the other way round, it is a thing said to you.
+  const heard = french.parse('phrase|je-peux-vous-aider|ar');
+  assert.equal(heard.side, 'reply');
+  assert.equal(french.prompt(heard).pill, 'The answer you get');
+  assert.equal(french.prompt(heard).nodes[0].textContent, 'Non merci, je regarde.');
+  assert.equal(french.answer(heard).answer, 'No thank you, I’m just looking.');
+  delete globalThis.document;
+
+  // A phrase with nothing to answer has no answer card.
+  assert.equal(french.parse('phrase|au-revoir|a'), null);
+  assert.ok(!all().includes('phrase|au-revoir|a'));
+  assert.equal(french.typable(reply), false);
 });
