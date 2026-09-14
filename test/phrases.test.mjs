@@ -152,3 +152,39 @@ test('a topic that no longer exists falls back rather than emptying the deck', (
   assert.deepEqual(settings({ topics: [] }).topics, french.defaults.topics);
   assert.deepEqual(settings({ topics: ['Problems'] }).topics, ['Problems']);
 });
+
+test('every phrase that is a question comes with an answer to it', () => {
+  // Asking is only half of it: the half that happens at speed, in a shop,
+  // with someone waiting, is the reply.
+  for (const p of PHRASES) {
+    const asked = p.fr.endsWith('?');
+    assert.equal(Boolean(p.reply), asked, `${p.id}: ${asked ? 'no reply' : 'a reply but not a question'}`);
+    if (!asked) continue;
+    assert.ok(p.replyEn, `${p.id} has a reply with no English`);
+    assert.match(p.reply, /[.!?…]$/, `unfinished reply: ${p.reply}`);
+    assert.match(p.replyEn, /[.!?…]$/, `unfinished translation: ${p.replyEn}`);
+    assert.ok(!p.reply.includes("'"), `straight apostrophe: ${p.reply}`);
+    assert.ok(!/ [?!:;»]/.test(p.reply), `use a non-breaking space: ${p.reply}`);
+    assert.notEqual(p.reply, p.fr, `${p.id} answers itself`);
+  }
+  assert.ok(PHRASES.filter((p) => p.reply).length > 40);
+});
+
+test('the reply is shown with the answer, both ways round', () => {
+  const cost = french.answer(french.parse('phrase|combien-ca-coute'));
+  assert.deepEqual(cost.reply, {
+    text: 'Ça fait douze euros cinquante.',
+    gloss: 'That’s twelve euros fifty.',
+  });
+  // The other direction wants it just as much.
+  assert.deepEqual(french.answer(french.parse('phrase|combien-ca-coute|r')).reply, cost.reply);
+
+  // A phrase that is not a question has nothing to come back at you.
+  assert.equal(french.answer(french.parse('phrase|au-revoir')).reply, undefined);
+
+  for (const p of PHRASES) {
+    const spec = french.answer(french.parse(`phrase|${p.id}`));
+    assert.equal(Boolean(spec.reply), Boolean(p.reply), p.id);
+    if (spec.reply) assert.ok(spec.reply.text && spec.reply.gloss, p.id);
+  }
+});

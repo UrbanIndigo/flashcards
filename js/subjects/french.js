@@ -405,13 +405,16 @@ export const french = {
     }
 
     if (direction === 'phrase' || direction === 'phrase-meaning') {
-      const { fr, en, alt, register, note: usage } = card.phrase;
+      const { fr, en, alt, register, note: usage, reply, replyEn } = card.phrase;
       // There is usually more than one way to say it, and knowing the others
       // is most of the point.
       const others = alt?.length ? `or ${alt.join(' · ')}` : '';
       return {
         answer: direction === 'phrase' ? fr : en,
         sub: [register, others].filter(Boolean).join(' · ') || undefined,
+        // Asking is half of it; understanding the answer is the half that
+        // happens at speed, in a shop, with someone waiting.
+        reply: reply ? { text: reply, gloss: replyEn } : undefined,
         note: usage,
       };
     }
