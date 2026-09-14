@@ -18,11 +18,13 @@ import { checkAnswer, checkRecognition, interpretationsOf } from '../answer.js';
 import { ruleFor } from '../rules.js';
 import { SENTENCES, WORKS } from '../sentences.js';
 import { EXPRESSIONS, EXPRESSION_BY_ID, THEMES, expressionsForThemes } from '../expressions.js';
+import { PHRASES, PHRASE_BY_ID, TOPICS, phrasesForTopics } from '../phrases.js';
 
 const STUDY = [
   ['conjugation', 'Conjugation', 'Drill the forms'],
   ['reading', 'Reading', 'Sentences from novels'],
   ['expressions', 'Expressions', 'Idioms in a sentence'],
+  ['phrases', 'Phrases', 'Everyday sentences'],
 ];
 
 const DIRECTIONS = [
@@ -31,12 +33,24 @@ const DIRECTIONS = [
   ['mix', 'Mix both', 'alternates between the two'],
 ];
 
+// The same setting, since it is the same question — can you produce it, or
+// only recognise it — but a phrase needs its own words for it.
+const PHRASE_DIRECTIONS = [
+  ['produce', 'Say it in French', 'English → French'],
+  ['recognise', 'Say what it means', 'French → English'],
+  ['mix', 'Mix both', 'alternates between the two'],
+];
+
+/** Cards there is no honest way to mark, so you grade them yourself. */
+const SELF_GRADED = new Set(['expression', 'phrase', 'phrase-meaning']);
+
 const SENTENCE_BY_ID = new Map(SENTENCES.map((sentence) => [sentence.id, sentence]));
 
 const DAILY_KEYS = {
   conjugation: 'conjugaison.daily.v1',
   reading: 'conjugaison.daily.reading.v1',
   expressions: 'conjugaison.daily.expressions.v1',
+  phrases: 'conjugaison.daily.phrases.v1',
 };
 
 // A forward card keeps its three-part id, so review history recorded before
@@ -57,7 +71,7 @@ function span(className, content) {
 export const french = {
   id: 'french',
   label: 'French verbs',
-  hint: 'Conjugation, reading and expressions',
+  hint: 'Conjugation, reading, expressions and phrases',
 
   defaults: {
     study: 'conjugation',
@@ -66,6 +80,7 @@ export const french = {
     pronouns: [0, 1, 2, 3, 4, 5],
     direction: 'produce',
     themes: [...THEMES],
+    topics: [...TOPICS],
   },
 
   keys(s) {
@@ -99,6 +114,8 @@ export const french = {
     if (!STUDY.some(([id]) => id === s.study)) s.study = this.defaults.study;
     s.themes = (s.themes ?? []).filter((t) => THEMES.includes(t));
     if (!s.themes.length) s.themes = [...this.defaults.themes];
+    s.topics = (s.topics ?? []).filter((t) => TOPICS.includes(t));
+    if (!s.topics.length) s.topics = [...this.defaults.topics];
   },
 
   filters(s) {
@@ -109,6 +126,27 @@ export const french = {
       type: 'radio',
       options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
     };
+
+    // A phrase is asked the other way round by default: you are shown the
+    // English and asked for the French, because that is the direction a
+    // conversation asks for.
+    if (s.study === 'phrases') {
+      return [study, {
+        id: 'topics',
+        legend: 'Topics',
+        type: 'checkbox',
+        options: TOPICS.map((topic) => ({
+          value: topic,
+          label: topic,
+          hint: `${PHRASES.filter((p) => p.topic === topic).length}`,
+        })),
+      }, {
+        id: 'direction',
+        legend: 'Direction',
+        type: 'radio',
+        options: PHRASE_DIRECTIONS.map(([value, label, hint]) => ({ value, label, hint })),
+      }];
+    }
 
     // An expression is not a verb in a tense, so none of the conjugation
     // settings have anything to say about one.
@@ -164,6 +202,13 @@ export const french = {
     if (s.study === 'expressions') {
       return expressionsForThemes(s.themes).map((expression) => `expr|${expression.id}`);
     }
+    if (s.study === 'phrases') {
+      const ways = s.direction === 'mix' ? ['produce', 'recognise'] : [s.direction];
+      for (const phrase of phrasesForTopics(s.topics)) {
+        for (const way of ways) ids.push(`phrase|${phrase.id}${way === 'recognise' ? '|r' : ''}`);
+      }
+      return ids;
+    }
     if (s.study === 'reading') {
       // Sentence cards are not verb x tense x pronoun combinations, so the
       // pronoun filter has nothing to say about them; deck and tense still do.
@@ -187,6 +232,12 @@ export const french = {
   },
 
   parse(id) {
+    if (id.startsWith('phrase|')) {
+      const [, key, mark] = id.split('|');
+      const phrase = PHRASE_BY_ID.get(key);
+      if (!phrase) return null;
+      return { direction: mark === 'r' ? 'phrase-meaning' : 'phrase', phrase };
+    }
     if (id.startsWith('expr|')) {
       const expression = EXPRESSION_BY_ID.get(id.slice('expr|'.length));
       // An expression that has since been reworded: the app skips a card it
@@ -217,6 +268,24 @@ export const french = {
 
   prompt(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'phrase') {
+      return {
+        pill: 'In French?',
+        lead: 'How would you say this?',
+        question: true,
+        nodes: [text(card.phrase.en)],
+      };
+    }
+
+    if (direction === 'phrase-meaning') {
+      return {
+        pill: 'Everyday phrase',
+        lead: 'What does this mean?',
+        question: true,
+        nodes: [text(card.phrase.fr)],
+      };
+    }
 
     if (direction === 'expression') {
       const { text: sentence, start, end } = card.expression;
@@ -265,6 +334,18 @@ export const french = {
   answer(card) {
     const { verb, tense, person, direction } = card;
 
+    if (direction === 'phrase' || direction === 'phrase-meaning') {
+      const { fr, en, alt, register, note: usage } = card.phrase;
+      // There is usually more than one way to say it, and knowing the others
+      // is most of the point.
+      const others = alt?.length ? `or ${alt.join(' · ')}` : '';
+      return {
+        answer: direction === 'phrase' ? fr : en,
+        sub: [register, others].filter(Boolean).join(' · ') || undefined,
+        note: usage,
+      };
+    }
+
     if (direction === 'expression') {
       const { fr, en, literal, register } = card.expression;
       return {
@@ -310,6 +391,9 @@ export const french = {
 
   /** The whole six-person paradigm, on request — or the sentence in English. */
   extra(card) {
+    // A phrase is already the whole of itself; there is nothing held back.
+    if (card.direction === 'phrase' || card.direction === 'phrase-meaning') return null;
+
     if (card.direction === 'expression') {
       const line = document.createElement('p');
       line.className = 'translation';
@@ -334,6 +418,8 @@ export const french = {
     if (direction === 'expression') {
       return { question: card.expression.fr, answer: card.expression.en };
     }
+    if (direction === 'phrase') return { question: card.phrase.en, answer: card.phrase.fr };
+    if (direction === 'phrase-meaning') return { question: card.phrase.fr, answer: card.phrase.en };
     if (direction === 'reading') {
       return {
         question: sentence.text.slice(sentence.start, sentence.end),
@@ -354,10 +440,10 @@ export const french = {
    * "had enough" are the same answer, and there is no honest way to mark the
    * difference, so the card asks rather than tests.
    */
-  typable: (card) => card.direction !== 'expression',
+  typable: (card) => !SELF_GRADED.has(card.direction),
 
   check(input, card) {
-    if (card.direction === 'expression') return null;
+    if (SELF_GRADED.has(card.direction)) return null;
     return card.direction === 'produce' ? checkAnswer(input, card) : checkRecognition(input, card);
   },
 

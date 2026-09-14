@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 96 expressions in context and reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 96 expressions in context, a 105-phrase phrasebook, and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -370,6 +370,42 @@ the meaning out of the sentence comes first.
 Five themes to filter by — Everyday, Feelings, People, Work, Trouble — and
 its own daily allowance, so an evening of idioms does not eat the
 conjugation twenty.
+
+### Phrases
+
+**Study → Phrases** is the phrasebook: 105 everyday sentences, asked the
+other way round.
+
+> How much does this cost?
+>
+> → **Combien ça coûte ?**
+> or C'est combien ? · Ça coûte combien ?
+
+English to French by default, because that is the direction a conversation
+asks for — you need to *say* it in the shop, not recognise it in a book. The
+Direction control flips it to French → English for the half of a
+conversation that is said to you, which is why phrases like *Je peux vous
+aider ?* and *Plate ou gazeuse ?* are in there at all: you will never say
+them, but you will hear them.
+
+Not idioms. The expressions deck holds the ones whose meaning you could
+never guess from the words; this holds the ordinary sentences whose words
+you already know and whose shape you do not. *Combien ça coûte* is not a
+puzzle, it is a thing you have to be able to say without assembling it out
+of grammar first.
+
+Also not typed, for the same reason as the expressions and a sharper one:
+there are usually three ways to say the same thing. The alternatives are
+listed under the answer rather than marked against it.
+
+Where there is a trap, a note says so — *la carte* is the menu but *le menu*
+is a set meal, *un billet* is for the train but *un ticket* is for the
+metro, *désolé* takes an -e in the feminine, and tap water has a name you
+have to know to ask for. Everything is in the *vous* form unless that would
+be strange, since that is what you want with a stranger.
+
+Seven topics — Greetings, Getting around, Shopping, Eating out,
+Understanding, Small talk, Problems — and its own daily allowance again.
 
 ### The recap
 
