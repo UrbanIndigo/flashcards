@@ -199,6 +199,13 @@ main {
 }
 .prompt-body strong { font-weight: 700; }
 
+/* The hole in the sentence, which should read as something missing rather
+   than as punctuation. */
+.prompt-body .gap {
+  color: var(--accent);
+  letter-spacing: .06em;
+}
+
 /* A sentence needs to read like prose, not like a headline. */
 .prompt-body.prose {
   margin: 6px 0 0;

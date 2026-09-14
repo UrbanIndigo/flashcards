@@ -14,17 +14,21 @@ import {
   conjugate, answerFor, attachPronoun,
   TENSES, TENSE_IDS, PRONOUN_LABELS, tenseLabel,
 } from '../conjugator.js';
-import { checkAnswer, checkRecognition, interpretationsOf } from '../answer.js';
+import {
+  checkAnswer, checkRecognition, interpretationsOf, normalise, deaccent,
+} from '../answer.js';
 import { ruleFor } from '../rules.js';
 import { SENTENCES, WORKS } from '../sentences.js';
 import { EXPRESSIONS, EXPRESSION_BY_ID, THEMES, expressionsForThemes } from '../expressions.js';
 import { PHRASES, PHRASE_BY_ID, TOPICS, phrasesForTopics } from '../phrases.js';
+import { GAPS, GAP_BY_ID, PATTERNS, gapsForPatterns } from '../gaps.js';
 
 const STUDY = [
   ['conjugation', 'Conjugation', 'Drill the forms'],
   ['reading', 'Reading', 'Sentences from novels'],
   ['expressions', 'Expressions', 'Idioms in a sentence'],
   ['phrases', 'Phrases', 'Everyday sentences'],
+  ['gaps', 'Little words', 'en, y, dont — fill the gap'],
 ];
 
 const DIRECTIONS = [
@@ -44,6 +48,25 @@ const PHRASE_DIRECTIONS = [
 /** Cards there is no honest way to mark, so you grade them yourself. */
 const SELF_GRADED = new Set(['expression', 'phrase', 'phrase-meaning']);
 
+const CORRECT = { level: 'correct', message: 'Correct' };
+const ACCENTS = { level: 'close', message: 'Almost — check the accents' };
+const WRONG = { level: 'wrong', message: 'Not quite' };
+
+/**
+ * A gap is one word out of a closed set, which is short enough to type and
+ * exact enough to mark — unlike everything else self-graded here.
+ */
+function checkGap(input, { gap, also = [] }) {
+  const typed = normalise(input ?? '');
+  if (!typed) return WRONG;
+  const accepted = [gap, ...also].map(normalise);
+  if (accepted.includes(typed)) return CORRECT;
+  // à and a are different words, so this is worth saying rather than waving
+  // through.
+  if (accepted.some((answer) => deaccent(answer) === deaccent(typed))) return ACCENTS;
+  return WRONG;
+}
+
 const SENTENCE_BY_ID = new Map(SENTENCES.map((sentence) => [sentence.id, sentence]));
 
 const DAILY_KEYS = {
@@ -51,6 +74,7 @@ const DAILY_KEYS = {
   reading: 'conjugaison.daily.reading.v1',
   expressions: 'conjugaison.daily.expressions.v1',
   phrases: 'conjugaison.daily.phrases.v1',
+  gaps: 'conjugaison.daily.gaps.v1',
 };
 
 // A forward card keeps its three-part id, so review history recorded before
@@ -71,7 +95,7 @@ function span(className, content) {
 export const french = {
   id: 'french',
   label: 'French verbs',
-  hint: 'Conjugation, reading, expressions and phrases',
+  hint: 'Conjugation, expressions, phrases and reading',
 
   defaults: {
     study: 'conjugation',
@@ -81,6 +105,7 @@ export const french = {
     direction: 'produce',
     themes: [...THEMES],
     topics: [...TOPICS],
+    patterns: [...PATTERNS],
   },
 
   keys(s) {
@@ -116,6 +141,8 @@ export const french = {
     if (!s.themes.length) s.themes = [...this.defaults.themes];
     s.topics = (s.topics ?? []).filter((t) => TOPICS.includes(t));
     if (!s.topics.length) s.topics = [...this.defaults.topics];
+    s.patterns = (s.patterns ?? []).filter((p) => PATTERNS.includes(p));
+    if (!s.patterns.length) s.patterns = [...this.defaults.patterns];
   },
 
   filters(s) {
@@ -126,6 +153,21 @@ export const french = {
       type: 'radio',
       options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
     };
+
+    // A little word is learnt by meeting it, not by being told a rule, so
+    // the only thing to choose is which ones you are meeting.
+    if (s.study === 'gaps') {
+      return [study, {
+        id: 'patterns',
+        legend: 'Patterns',
+        type: 'checkbox',
+        options: PATTERNS.map((pattern) => ({
+          value: pattern,
+          label: pattern,
+          hint: `${GAPS.filter((g) => g.pattern === pattern).length}`,
+        })),
+      }];
+    }
 
     // A phrase is asked the other way round by default: you are shown the
     // English and asked for the French, because that is the direction a
@@ -199,6 +241,9 @@ export const french = {
 
   cardIds(s) {
     const ids = [];
+    if (s.study === 'gaps') {
+      return gapsForPatterns(s.patterns).map((gap) => `gap|${gap.id}`);
+    }
     if (s.study === 'expressions') {
       return expressionsForThemes(s.themes).map((expression) => `expr|${expression.id}`);
     }
@@ -232,6 +277,10 @@ export const french = {
   },
 
   parse(id) {
+    if (id.startsWith('gap|')) {
+      const gap = GAP_BY_ID.get(id.slice('gap|'.length));
+      return gap ? { direction: 'gap', gap } : null;
+    }
     if (id.startsWith('phrase|')) {
       const [, key, mark] = id.split('|');
       const phrase = PHRASE_BY_ID.get(key);
@@ -268,6 +317,18 @@ export const french = {
 
   prompt(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'gap') {
+      const { text: sentence, start, end } = card.gap;
+      return {
+        pill: 'Which word?',
+        // The English is not a hint here, it is the question: without it
+        // there is no telling whether the hole wants y or le.
+        lead: card.gap.en,
+        question: true,
+        nodes: [text(sentence.slice(0, start)), span('gap', '___'), text(sentence.slice(end))],
+      };
+    }
 
     if (direction === 'phrase') {
       return {
@@ -334,6 +395,15 @@ export const french = {
   answer(card) {
     const { verb, tense, person, direction } = card;
 
+    if (direction === 'gap') {
+      const { gap: missing, text: sentence, also, note: rule } = card.gap;
+      return {
+        answer: missing,
+        sub: also?.length ? `${sentence} · or ${also.join(', ')}` : sentence,
+        note: rule,
+      };
+    }
+
     if (direction === 'phrase' || direction === 'phrase-meaning') {
       const { fr, en, alt, register, note: usage } = card.phrase;
       // There is usually more than one way to say it, and knowing the others
@@ -391,8 +461,8 @@ export const french = {
 
   /** The whole six-person paradigm, on request — or the sentence in English. */
   extra(card) {
-    // A phrase is already the whole of itself; there is nothing held back.
-    if (card.direction === 'phrase' || card.direction === 'phrase-meaning') return null;
+    // A phrase, or a gap, is already the whole of itself: nothing held back.
+    if (['phrase', 'phrase-meaning', 'gap'].includes(card.direction)) return null;
 
     if (card.direction === 'expression') {
       const line = document.createElement('p');
@@ -417,6 +487,10 @@ export const french = {
     const { verb, tense, person, direction, sentence } = card;
     if (direction === 'expression') {
       return { question: card.expression.fr, answer: card.expression.en };
+    }
+    if (direction === 'gap') {
+      const { text: sentence, start, end, gap: missing } = card.gap;
+      return { question: `${sentence.slice(0, start)}___${sentence.slice(end)}`, answer: missing };
     }
     if (direction === 'phrase') return { question: card.phrase.en, answer: card.phrase.fr };
     if (direction === 'phrase-meaning') return { question: card.phrase.fr, answer: card.phrase.en };
@@ -444,10 +518,12 @@ export const french = {
 
   check(input, card) {
     if (SELF_GRADED.has(card.direction)) return null;
+    if (card.direction === 'gap') return checkGap(input, card.gap);
     return card.direction === 'produce' ? checkAnswer(input, card) : checkRecognition(input, card);
   },
 
   placeholder(card) {
+    if (card.direction === 'gap') return 'the missing word…';
     return card.direction === 'produce' ? 'type the form…' : 'verb and tense…';
   },
 };
