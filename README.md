@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 96 expressions in context and reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -370,6 +370,78 @@ the meaning out of the sentence comes first.
 Five themes to filter by — Everyday, Feelings, People, Work, Trouble — and
 its own daily allowance, so an evening of idioms does not eat the
 conjugation twenty.
+
+### Phrases
+
+**Study → Phrases** is the phrasebook: 105 everyday sentences, asked the
+other way round.
+
+> How much does this cost?
+>
+> → **Combien ça coûte ?**
+> or C'est combien ? · Ça coûte combien ?
+
+English to French by default, because that is the direction a conversation
+asks for — you need to *say* it in the shop, not recognise it in a book. The
+Direction control flips it to French → English for the half of a
+conversation that is said to you, which is why phrases like *Je peux vous
+aider ?* and *Plate ou gazeuse ?* are in there at all: you will never say
+them, but you will hear them.
+
+Not idioms. The expressions deck holds the ones whose meaning you could
+never guess from the words; this holds the ordinary sentences whose words
+you already know and whose shape you do not. *Combien ça coûte* is not a
+puzzle, it is a thing you have to be able to say without assembling it out
+of grammar first.
+
+Also not typed, for the same reason as the expressions and a sharper one:
+there are usually three ways to say the same thing. The alternatives are
+listed under the answer rather than marked against it.
+
+Where there is a trap, a note says so — *la carte* is the menu but *le menu*
+is a set meal, *un billet* is for the train but *un ticket* is for the
+metro, *désolé* takes an -e in the feminine, and tap water has a name you
+have to know to ask for. Everything is in the *vous* form unless that would
+be strange, since that is what you want with a stranger.
+
+Seven topics — Greetings, Getting around, Shopping, Eating out,
+Understanding, Small talk, Problems — and its own daily allowance again.
+
+### Little words
+
+**Study → Little words** is 109 sentences with one word missing:
+
+> *We have just come back from there.*
+>
+> Nous ___ revenons.
+>
+> → **en**
+> Nous en revenons.
+> *en also stands for the place you came from: revenir de.*
+
+There is no rule you can learn once and then apply. *En* is not a word with
+a translation, it is a hole in the sentence where *de quelque chose* used to
+be, and it only becomes automatic by being met a hundred times. So this is
+examples rather than explanation: eleven patterns, a dozen sentences each,
+and the English above the sentence — not as a hint but as the question,
+because without it there is no telling whether the hole wants *y* or *le*.
+
+Eleven patterns: **en**, **y**, **object pronouns** (le against lui, and the
+order when two of them meet), **relative pronouns** (dont, ce qui, ce que,
+où, laquelle), **on**, **negation** (ne … que is not a negation at all),
+**time** (depuis, pendant, pour, il y a, dans, en — English has one "for"
+and one "in"; French has several of each), **à or de** after a verb, **c'est
+or il est**, **articles** (du, de la, and the way they all collapse to *de*
+after a negative), and **not like English** — *tu me manques*, *il faut*,
+*j'ai froid*, the ones that are back to front.
+
+These cards **are** typed, unlike the expressions and phrases. The answer is
+one word from a closed set, which is short enough to type on a phone and
+exact enough to mark. Accents count: *à* and *a* are different words, so a
+missing one is a near miss rather than a pass. Where a second answer is
+genuinely said — *c'est difficile de* for *il est difficile de* — it is
+accepted, because marking someone wrong for writing what French people
+write teaches the wrong thing.
 
 ### The recap
 
