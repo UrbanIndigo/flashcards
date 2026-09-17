@@ -659,6 +659,39 @@ export const french = {
     }
   },
 
+  /**
+   * Whether this card can be studied by ear alone, with the text held back
+   * until you answer.
+   *
+   * The rule is one line long and worth stating plainly: a card can be heard
+   * when what the voice says is the whole of what the card would have shown
+   * you. That is true of a form you are asked to name, and of any French
+   * sentence you are asked the meaning of. It is not true of a reading or an
+   * expression card, which mark one word in the sentence and ask about that
+   * word — you cannot hear a mark. It is not true of a gap, which is a hole
+   * you cannot hear either, nor of a message, where the voice says the tidy
+   * sentence and the card shows the mangled one, which is the whole lesson.
+   * And it is never true of a card that asks you to produce the French,
+   * where playing it would simply be the answer.
+   */
+  hearable(card) {
+    const spoken = this.speech(card);
+    if (!spoken?.withPrompt || !spoken.text) return false;
+    return this.faces(card).question === spoken.text;
+  },
+
+  /**
+   * What to change when listening is switched on, so that it has something
+   * to play. Every study here that can be heard at all is the French → English
+   * half of a two-way pair, and the default is the other half, so turning
+   * listening on with nothing else would land you on an empty deck. Nudging
+   * the direction once is friendlier than explaining that; it is a visible
+   * change, and the radio it moves is in the same settings panel.
+   */
+  forListening(s) {
+    if (s.direction === 'produce') s.direction = 'recognise';
+  },
+
   faces(card) {
     const { verb, tense, person, direction, sentence } = card;
     if (direction === 'expression') {

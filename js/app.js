@@ -12,9 +12,20 @@ const SETTINGS_KEY = 'conjugaison.settings.v1';
 
 const $ = (id) => document.getElementById(id);
 
+/**
+ * How you answer a card. Listening is the odd one out: it is less a way of
+ * answering than a way of being asked — the French is played and never
+ * printed, and you work from the voice alone until you reveal.
+ */
+const MODES = [
+  ['reveal', 'Think, then reveal', 'Fastest'],
+  ['type', 'Type the answer', 'Catches spelling'],
+  ['listen', 'Listen, no text', 'Plays by itself · reveal to read it'],
+];
+
 const DEFAULT_SETTINGS = {
   subject: 'french',
-  mode: 'reveal', // 'reveal' | 'type'
+  mode: 'reveal', // 'reveal' | 'type' | 'listen'
   speech: 'auto', // 'auto' | 'tap' | 'off'
   dailyNew: DEFAULT_DAILY_NEW,
   subjects: {},
@@ -61,6 +72,7 @@ let settings = migrate(read(SETTINGS_KEY));
 if (settings.subject === 'flags') settings.subject = 'geography';
 if (!SUBJECTS.some((s) => s.id === settings.subject)) settings.subject = DEFAULT_SETTINGS.subject;
 if (!DAILY_GOALS.includes(settings.dailyNew)) settings.dailyNew = DEFAULT_SETTINGS.dailyNew;
+if (!MODES.some(([id]) => id === settings.mode)) settings.mode = DEFAULT_SETTINGS.mode;
 
 let subject = subjectById(settings.subject);
 
@@ -77,7 +89,15 @@ let progress;
 let daily;
 let log;
 
+// The pool of cards these settings describe, worked out once. It is walked
+// several times per card — the queue, the day's new cards, the next due
+// time, every segment of the progress bar — and while listening each id has
+// to be parsed to know whether it can be heard. Cleared whenever the
+// settings, the subject or the available voices change.
+let cached = null;
+
 function loadSubjectState() {
+  cached = null;
   subject = subjectById(settings.subject);
   // A subject that has been reorganised can bring its old history with it.
   subject.migrate?.(read, save);
@@ -98,8 +118,29 @@ save(SETTINGS_KEY, settings);
 
 // ------------------------------------------------------------------ cards
 
+/**
+ * The mode actually in force. Listening needs a voice on this phone and a
+ * subject with cards that can be heard, so geography — and a phone with no
+ * French installed — quietly falls back to revealing rather than showing an
+ * option that would do nothing.
+ */
+function mode() {
+  if (settings.mode === 'listen' && !(canSpeak() && subject.hearable)) return 'reveal';
+  return settings.mode;
+}
+
+const listening = () => mode() === 'listen';
+
 function pool() {
-  return subject.cardIds(sub());
+  if (cached) return cached;
+  const ids = subject.cardIds(sub());
+  cached = listening()
+    ? ids.filter((id) => {
+      const card = subject.parse(id);
+      return card ? subject.hearable(card) : false;
+    })
+    : ids;
+  return cached;
 }
 
 function shuffle(items) {
@@ -150,10 +191,12 @@ function nextDueAt() {
 
 /**
  * The French on the current card, if this phone has a voice for it and you
- * have not turned it off.
+ * have not turned it off. Listening ignores the silence setting: the sound
+ * is the card, and there would be nothing left of it.
  */
 function speech() {
-  if (settings.speech === 'off' || !canSpeak() || !current) return null;
+  if (!canSpeak() || !current) return null;
+  if (settings.speech === 'off' && !listening()) return null;
   const spec = subject.speech?.(current);
   return spec?.text ? spec : null;
 }
@@ -169,8 +212,27 @@ function speakButton(id, text) {
   button.onclick = text ? () => say(text) : null;
 }
 
+// Safari, and Chrome on Android, will not speak until the page has seen a
+// tap. Opening the app straight onto a listening card therefore starts in
+// silence however hard it tries, so the card asks for the tap instead of
+// pretending to play. One tap anywhere is enough, for the rest of the visit.
+let primed = false;
+const prime = () => {
+  if (primed) return;
+  primed = true;
+  if (listening()) renderListenNote();
+};
+document.addEventListener('pointerdown', prime);
+document.addEventListener('keydown', prime);
+
+function renderListenNote() {
+  $('listen-note').textContent = primed
+    ? 'Tap the speaker to hear it again'
+    : 'Tap the speaker to hear it';
+}
+
 function typingAllowed() {
-  return settings.mode === 'type' && (subject.typable?.(current) ?? true);
+  return mode() === 'type' && (subject.typable?.(current) ?? true);
 }
 
 function renderCard() {
@@ -242,6 +304,19 @@ function renderCard() {
   speakButton('speak-prompt', spoken?.withPrompt ? spoken.text : null);
   speakButton('speak-answer', null);
 
+  // Listening: the French is played instead of printed, and the text stays
+  // behind until you have had your go at it. The speaker stops being a
+  // footnote on the card and becomes the card.
+  const veiled = listening() && Boolean(spoken?.withPrompt);
+  body.classList.toggle('veiled', veiled);
+  if (veiled) $('card-gloss').hidden = true;
+  $('speak-prompt').classList.toggle('big', veiled);
+  $('listen-note').hidden = !veiled;
+  if (veiled) {
+    renderListenNote();
+    if (primed) say(spoken.text);
+  }
+
   if (typing) $('answer-input').focus();
   updateStats();
 }
@@ -297,6 +372,21 @@ function renderEmpty() {
   $('add-more').hidden = !hitGoal;
   $('study-anyway').hidden = hitGoal;
   renderRecap();
+
+  // Listening can empty a deck that is not empty: it only has the cards
+  // where the French is the question. Saying so beats "all caught up",
+  // which would be a lie and no help in fixing it.
+  if (listening() && !pool().length && subject.cardIds(sub()).length) {
+    $('add-more').hidden = true;
+    $('study-anyway').hidden = true;
+    $('empty-title').textContent = 'Nothing here to listen to';
+    $('empty-body').textContent =
+      'Listening only uses cards where the French is the question. It cannot'
+      + ' read out a card that asks you to produce it, or a blank, or a word'
+      + ' marked on the page. Change Direction in Settings, or study'
+      + ' something the voice can ask you.';
+    return;
+  }
 
   if (hitGoal) {
     $('empty-title').textContent = `That is your ${daily.allowance} for today`;
@@ -379,9 +469,17 @@ function renderResult(verdict) {
   renderGrades(verdict);
   $('grades').hidden = false;
 
+  // What you have been listening to, now in writing: matching the sound to
+  // the spelling is half of what the mode is for.
+  $('prompt-body').classList.remove('veiled');
+  $('speak-prompt').classList.remove('big');
+  $('listen-note').hidden = true;
+
   const spoken = speech();
   speakButton('speak-answer', spoken?.text ?? null);
-  if (spoken && settings.speech === 'auto') say(spoken.text);
+  // Listening has just played this, and saying it again over the reveal is
+  // startling rather than useful; the speaker is there to ask for it.
+  if (spoken && settings.speech === 'auto' && !listening()) say(spoken.text);
 
   updateStats();
 }
@@ -598,19 +696,27 @@ function renderSettings() {
 
   const modes = $('mode-options');
   modes.innerHTML = '';
-  for (const [id, label, hint] of [
-    ['reveal', 'Think, then reveal', 'Fastest'],
-    ['type', 'Type the answer', 'Catches spelling'],
-  ]) {
+  for (const [id, label, hint] of MODES) {
+    // Listening is only offered where it can work: this subject must have
+    // something to say, and the phone must have a voice to say it with.
+    if (id === 'listen' && !(canSpeak() && subject.hearable)) continue;
     modes.append(option({
       type: 'radio', name: 'mode', label, hint,
-      checked: settings.mode === id,
-      onChange: (on) => { if (on) { settings.mode = id; commitSettings(); } },
+      // A mode that cannot apply here shows as the reveal it behaves as.
+      checked: mode() === id,
+      onChange: (on) => {
+        if (!on) return;
+        settings.mode = id;
+        // Leave it on a deck with something in it.
+        if (id === 'listen') subject.forListening?.(sub());
+        commitSettings();
+      },
     }));
   }
 
-  // A phone with no French voice gets no choice to make about French voices.
-  $('sound').hidden = !canSpeak();
+  // A phone with no French voice gets no choice to make about French voices,
+  // and while listening there is nothing to choose: the card is the sound.
+  $('sound').hidden = !canSpeak() || listening();
   const speechOptions = $('speech-options');
   speechOptions.innerHTML = '';
   for (const [id, label, hint] of [
@@ -675,8 +781,14 @@ function buildAccentBar() {
 }
 
 // The voice list is usually empty on the first frame and arrives later, so
-// the controls and the buttons are put up again once it does.
+// the controls and the buttons are put up again once it does. A voice
+// turning up is also what makes listening possible, and the pool of cards
+// depends on that.
 listen(() => {
+  cached = null;
+  // Which cards exist depends on there being a voice, but only while
+  // listening — elsewhere the queue in hand is still the right one.
+  if (listening()) queue = [];
   renderSettings();
   renderCard();
 });
@@ -736,6 +848,15 @@ document.addEventListener('keydown', (event) => {
   if (!typing && (event.key.toLowerCase() === 's')) {
     event.preventDefault();
     openSettings(true);
+    return;
+  }
+
+  // Hearing it again, which is most of the work on a listening card.
+  if (!typing && event.key.toLowerCase() === 'r') {
+    const spoken = speech();
+    if (!spoken || (!answered && !spoken.withPrompt)) return;
+    event.preventDefault();
+    say(spoken.text);
     return;
   }
 
