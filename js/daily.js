@@ -6,6 +6,8 @@
  * line instead of dealing another twenty every time the queue drains.
  */
 
+import { EASY } from './scheduler.js';
+
 export const DAILY_GOALS = [5, 10, 20, 40];
 export const DEFAULT_DAILY_NEW = 20;
 
@@ -28,6 +30,17 @@ export function rollOver(daily, today, goal = DEFAULT_DAILY_NEW) {
   if (!daily || daily.date !== today) return newDay(today, goal);
   return daily;
 }
+
+/**
+ * Whether answering a card for the first time spends one of the day's new
+ * cards.
+ *
+ * Marking a card you have never seen "Too easy" is not an introduction: you
+ * knew the word before it came up, and it goes straight to the back of the
+ * schedule without teaching you anything. So the day still owes you a new
+ * card, and deals one when the queue next runs dry.
+ */
+export const introduces = (isNew, grade) => isNew && grade !== EASY;
 
 export function remainingNew(daily) {
   return Math.max(0, (daily?.allowance ?? 0) - (daily?.introduced ?? 0));

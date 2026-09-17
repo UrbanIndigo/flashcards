@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  todayKey, newDay, rollOver, remainingNew, goalReached, DEFAULT_DAILY_NEW,
+  todayKey, newDay, rollOver, remainingNew, goalReached, DEFAULT_DAILY_NEW, introduces,
 } from '../js/daily.js';
 
 test('the day key follows the local calendar, not UTC', () => {
@@ -46,4 +46,29 @@ test('missing or malformed records do not blow up', () => {
   assert.equal(remainingNew(undefined), 0);
   assert.equal(remainingNew({}), 0);
   assert.equal(rollOver(undefined, '2026-09-07').allowance, DEFAULT_DAILY_NEW);
+});
+
+test('a card you retire on sight does not spend one of the day’s new cards', () => {
+  // "Too easy" on a word you have never seen is not an introduction: you
+  // knew it before it came up, so the twenty still owes you twenty.
+  assert.equal(introduces(true, 0), true, 'got it wrong — that is learning');
+  assert.equal(introduces(true, 1), true, 'got it right, but it comes back');
+  assert.equal(introduces(true, 2), false, 'knew it already');
+
+  // A card already in progress never counted against today in the first
+  // place, whatever you grade it.
+  for (const grade of [0, 1, 2]) assert.equal(introduces(false, grade), false, `grade ${grade}`);
+});
+
+test('the refunded card comes back as another new one', () => {
+  let day = newDay('2026-09-17', 20);
+  // Nineteen genuinely new cards, and one you already knew.
+  for (let i = 0; i < 19; i += 1) {
+    if (introduces(true, 1)) day = { ...day, introduced: day.introduced + 1 };
+  }
+  if (introduces(true, 2)) day = { ...day, introduced: day.introduced + 1 };
+
+  assert.equal(day.introduced, 19, 'the easy one did not count');
+  assert.equal(remainingNew(day), 1, 'so the day still has one to give');
+  assert.equal(goalReached(day), false);
 });
