@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 1,000 everyday sentences covering the 500 commonest words, 60 real-world messages, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus a 1,000-word vocabulary with genders, 1,000 everyday sentences covering the 500 commonest words, 60 real-world messages, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -123,6 +123,7 @@ export const capitals = {
   prompt(card) { … },              // { pill, lead, nodes }
   answer(card) { … },              // { answer, sub?, reply?, source?, note? }
   speech(card) { … },              // { text, withPrompt } for the voice, or null
+  hearable(card) { … },            // can it be studied by ear, with the text held back?
   faces(card) { … },               // how it reads in the recap
   check(input, card) { … },        // a verdict, or null if not typable
 };
@@ -199,7 +200,8 @@ Then open <http://localhost:8000>. Any static file server works.
 
 ## Using it
 
-- **Space** reveals the answer, **1**–**3** grade it, **S** opens settings.
+- **Space** reveals the answer, **1**–**3** grade it, **R** plays the French
+  again, **S** opens settings.
 - Three buttons, coloured so they can be hit without reading. When each card
   comes back is the scheduler's problem, not yours:
 
@@ -403,6 +405,46 @@ stp, bcp).
 One way round only: reading these is the skill, and nobody needs drilling in
 how to leave out their own commas.
 
+### Vocabulary
+
+**Study → Vocabulary** is a thousand words, and the point of it is the
+gender.
+
+> house
+>
+> → **la maison**
+> house
+> *Feminine: la, une.*
+
+A noun is never shown bare. It arrives with its article, because the article
+is the half people fail to learn, and English → French is **marked on the
+gender as well as the spelling**:
+
+| you type | verdict |
+|---|---|
+| *la maison* or *une maison* | Correct |
+| *maison* | Right word — which gender? |
+| *le maison* | Right word — wrong gender |
+| *la maisson* | Not quite |
+
+Where the article elides it stops proving anything — *l'eau* could be either
+— so those words are shown as **l'eau (f)** and only *un* or *une* is
+accepted. The h in *l'homme* is mute and the h in *le hasard* is not, so the
+exceptions are listed rather than guessed at.
+
+Adjectives carry their feminine in brackets where it differs — **grand
+(grande)**, **heureux (heureuse)** — and stand alone where it does not:
+**rouge** says so in the note. Either form is accepted as an answer.
+
+French → English is graded by you, since a word has more meanings than a box
+can hold. English → French is typed, because there the answer is exactly one
+thing.
+
+Three bands by frequency and four kinds — nouns, verbs, adjectives, the rest
+— so the deck can be narrowed to *the first 250 nouns* and nothing else. The
+voice reads the article with the word, and never reads the "(f)", which is a
+note to the eye rather than something anyone says.
+
 ### Sentences
 
 **Study → Sentences** is the volume deck: a thousand plain sentences, two
@@ -537,6 +579,47 @@ silence.
 The quality is decent on iOS and patchier on Android — enough to check a
 liaison, not enough to imitate.
 
+### Listening, with nothing on the screen
+
+**Settings → How to answer → Listen, no text** turns the card into the sound
+of it. The French is played as the card comes up and never printed: what is
+on screen is the question — *What does this mean?* — a speaker, and the
+button to reveal. You work out the meaning from the voice alone, and the
+writing appears with the answer, which is the moment the sound and the
+spelling meet.
+
+That gap is the reason the mode exists. Reading French and hearing it are
+close to separate skills, and a deck you can read fluently will still leave
+you standing in a *boulangerie* having understood nothing. Cards are
+scheduled as they always are, so a sentence you can read but cannot hear
+comes back until you can.
+
+Not every card can be heard, and the app only offers the ones that can. The
+rule is one line long: **a card can be heard when what the voice says is the
+whole of what the card would have shown you.**
+
+| | |
+|---|---|
+| **je parlais → which verb, which tense?** | heard — the form is the question, and the voice says all of it |
+| **Il travaille tous les jours. → what does it mean?** | heard |
+| A sentence from a novel with one verb marked | not heard — you cannot hear a mark |
+| An expression highlighted in its sentence | not heard, for the same reason |
+| A sentence with a gap in it | not heard — you cannot hear a blank either |
+| A text message | not heard — the voice says the tidy sentence, and the mangled spelling is the whole lesson |
+| **je parle** asked as *parler, présent, je → ?* | not heard — playing it would simply be the answer |
+
+So listening is the French → English half of a study, and turning it on
+moves **Direction** there rather than leaving you on an empty deck. Pick a
+study that has nothing to hear — reading, expressions, little words,
+messages — and the finish screen says so plainly instead of claiming you are
+all caught up.
+
+Two smaller things. Silence is ignored while listening, since the sound is
+the card and there would be nothing left of it, so that setting disappears
+for as long as the mode is on. And a browser will not speak until the page
+has been tapped once, so the first card of a visit waits for that tap and
+says so rather than playing to itself; every card after it plays on arrival.
+
 ### The recap
 
 The finish screen ends with the day's recap:
@@ -567,7 +650,7 @@ In **Settings** you can choose:
 | **Tenses** | Présent, passé composé, imparfait, futur simple, conditionnel, plus-que-parfait, subjonctif présent, and the two literary tenses below |
 | **Pronouns** | Drill only *nous* and *vous* if those are the ones that trip you up (conjugation only) |
 | **Direction** | Give the form, name the verb and tense, or mix the two (conjugation only) |
-| **How to answer** | Reveal from memory, or type the answer and have it checked |
+| **How to answer** | Reveal from memory, type the answer and have it checked, or listen with no text at all |
 
 ### Both directions
 

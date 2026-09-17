@@ -49,6 +49,8 @@
       <p class="prompt-lead" id="prompt-lead"></p>
       <p class="prompt-body" id="prompt-body"></p>
       <button type="button" id="speak-prompt" class="speak" aria-label="Hear it" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/><path d="M15.6 8.6a4.6 4.6 0 0 1 0 6.8M18.3 6a8 8 0 0 1 0 12" fill="none"/></svg></button>
+      <!-- Only while listening, where the speaker is the whole card. -->
+      <p class="listen-note" id="listen-note" hidden></p>
     </div>
 
     <!-- Typing mode -->
@@ -99,7 +101,7 @@
   </section>
 
   <p class="hint">
-    <kbd>Space</kbd> reveal · <kbd>1</kbd>–<kbd>3</kbd> grade · <kbd>S</kbd> settings
+    <kbd>Space</kbd> reveal · <kbd>1</kbd>–<kbd>3</kbd> grade · <kbd>R</kbd> replay · <kbd>S</kbd> settings
   </p>
 </main>
 

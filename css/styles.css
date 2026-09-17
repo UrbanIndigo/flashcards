@@ -384,6 +384,28 @@ button { font: inherit; }
 .speak:active { background: var(--accent-soft); }
 .speak:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* Listening. The text is held back rather than laid out invisibly: a hidden
+   line of French is still selectable, still read aloud by a screen reader,
+   and either would give the answer away. */
+.prompt-body.veiled { display: none; }
+
+/* With nothing else on the card, the speaker has to look like the thing to
+   press, and be big enough to hit without looking. */
+.speak.big {
+  width: 96px;
+  height: 96px;
+  padding: 26px;
+  margin-top: 22px;
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+
+.listen-note {
+  margin: 10px 0 0;
+  font-size: .8rem;
+  color: var(--ink-faint);
+}
+
 /* --------------------------------------------------------------- grading */
 
 /* Three buttons, told apart by colour before they are read: red is wrong,

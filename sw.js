@@ -37,6 +37,7 @@ const ASSETS = [
   'js/speak.js',
   'js/sentences.js',
   'js/verbs.js',
+  'js/vocabulary.js',
   'js/subjects/index.js',
   'js/subjects/french.js',
   'js/subjects/geography.js',
