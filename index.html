@@ -48,6 +48,7 @@
     <div class="prompt">
       <p class="prompt-lead" id="prompt-lead"></p>
       <p class="prompt-body" id="prompt-body"></p>
+      <button type="button" id="speak-prompt" class="speak" aria-label="Hear it" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/><path d="M15.6 8.6a4.6 4.6 0 0 1 0 6.8M18.3 6a8 8 0 0 1 0 12" fill="none"/></svg></button>
     </div>
 
     <!-- Typing mode -->
@@ -65,6 +66,7 @@
     <div id="result" class="result" hidden>
       <p id="verdict" class="verdict"></p>
       <p class="answer" id="answer"></p>
+      <button type="button" id="speak-answer" class="speak" aria-label="Hear it" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9.5h3.2L12 5.4v13.2L7.2 14.5H4z"/><path d="M15.6 8.6a4.6 4.6 0 0 1 0 6.8M18.3 6a8 8 0 0 1 0 12" fill="none"/></svg></button>
       <p class="answer-sub" id="answer-sub" hidden></p>
       <p class="answer-reply" id="answer-reply" hidden></p>
       <p class="source" id="answer-source" hidden></p>
@@ -131,6 +133,11 @@
     <fieldset>
       <legend>How to answer</legend>
       <div id="mode-options" class="options"></div>
+    </fieldset>
+
+    <fieldset id="sound" hidden>
+      <legend>Saying it out loud</legend>
+      <div id="speech-options" class="options"></div>
     </fieldset>
 
     <div class="danger">

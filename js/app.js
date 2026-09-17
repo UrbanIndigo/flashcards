@@ -6,6 +6,7 @@ import {
 } from './daily.js';
 import { rollLog, record, summarise, accuracy, MAX_LISTED } from './recap.js';
 import { SUBJECTS, subjectById } from './subjects/index.js';
+import { listen, say, hush, canSpeak } from './speak.js';
 
 const SETTINGS_KEY = 'conjugaison.settings.v1';
 
@@ -14,6 +15,7 @@ const $ = (id) => document.getElementById(id);
 const DEFAULT_SETTINGS = {
   subject: 'french',
   mode: 'reveal', // 'reveal' | 'type'
+  speech: 'auto', // 'auto' | 'tap' | 'off'
   dailyNew: DEFAULT_DAILY_NEW,
   subjects: {},
 };
@@ -146,6 +148,27 @@ function nextDueAt() {
 
 // -------------------------------------------------------------- rendering
 
+/**
+ * The French on the current card, if this phone has a voice for it and you
+ * have not turned it off.
+ */
+function speech() {
+  if (settings.speech === 'off' || !canSpeak() || !current) return null;
+  const spec = subject.speech?.(current);
+  return spec?.text ? spec : null;
+}
+
+/**
+ * Wires one of the two speaker buttons to a piece of French, or hides it.
+ * Safari will not speak until the page has seen a tap, which is the other
+ * reason the button is there and not only the automatic reading.
+ */
+function speakButton(id, text) {
+  const button = $(id);
+  button.hidden = !text;
+  button.onclick = text ? () => say(text) : null;
+}
+
 function typingAllowed() {
   return settings.mode === 'type' && (subject.typable?.(current) ?? true);
 }
@@ -210,6 +233,14 @@ function renderCard() {
   $('extra').hidden = true;
   $('extra-toggle').hidden = true;
   $('extra-toggle').setAttribute('aria-expanded', 'false');
+
+  // Whatever was being said belongs to the card you have just left.
+  hush();
+  const spoken = speech();
+  // Only where the French is already on screen: on a card that asks you to
+  // produce it, a speaker button would read the answer out.
+  speakButton('speak-prompt', spoken?.withPrompt ? spoken.text : null);
+  speakButton('speak-answer', null);
 
   if (typing) $('answer-input').focus();
   updateStats();
@@ -347,6 +378,11 @@ function renderResult(verdict) {
   $('result').hidden = false;
   renderGrades(verdict);
   $('grades').hidden = false;
+
+  const spoken = speech();
+  speakButton('speak-answer', spoken?.text ?? null);
+  if (spoken && settings.speech === 'auto') say(spoken.text);
+
   updateStats();
 }
 
@@ -573,6 +609,22 @@ function renderSettings() {
     }));
   }
 
+  // A phone with no French voice gets no choice to make about French voices.
+  $('sound').hidden = !canSpeak();
+  const speechOptions = $('speech-options');
+  speechOptions.innerHTML = '';
+  for (const [id, label, hint] of [
+    ['auto', 'Read the answer out', 'as soon as it shows'],
+    ['tap', 'Only when I tap', 'the speaker button'],
+    ['off', 'Silence', 'no button either'],
+  ]) {
+    speechOptions.append(option({
+      type: 'radio', name: 'speech', label, hint,
+      checked: settings.speech === id,
+      onChange: (on) => { if (on) { settings.speech = id; commitSettings(); } },
+    }));
+  }
+
   const studied = Object.keys(progress).length;
 
   $('progress-summary').textContent = studied
@@ -621,6 +673,13 @@ function buildAccentBar() {
     bar.append(button);
   }
 }
+
+// The voice list is usually empty on the first frame and arrives later, so
+// the controls and the buttons are put up again once it does.
+listen(() => {
+  renderSettings();
+  renderCard();
+});
 
 $('reveal').addEventListener('click', reveal);
 $('answer-form').addEventListener('submit', (event) => { event.preventDefault(); reveal(); });

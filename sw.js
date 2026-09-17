@@ -34,6 +34,7 @@ const ASSETS = [
   'js/recap.js',
   'js/rules.js',
   'js/scheduler.js',
+  'js/speak.js',
   'js/sentences.js',
   'js/verbs.js',
   'js/subjects/index.js',
