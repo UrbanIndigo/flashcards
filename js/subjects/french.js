@@ -27,6 +27,9 @@ import {
 } from '../everyday.js';
 import { BANDS, WORDS } from '../common-words.js';
 import { MESSAGES, MESSAGE_BY_ID, TAGS, messagesForTags } from '../messages.js';
+import {
+  WORDS as VOCAB, WORD_BY_ID, BANDS as VOCAB_BANDS, KINDS, wordsFor,
+} from '../vocabulary.js';
 
 const STUDY = [
   ['conjugation', 'Conjugation', 'Drill the forms'],
@@ -36,6 +39,7 @@ const STUDY = [
   ['gaps', 'Little words', 'en, y, dont — fill the gap'],
   ['everyday', 'Sentences', 'A thousand ordinary ones'],
   ['messages', 'Messages', 'French as it is actually typed'],
+  ['words', 'Vocabulary', 'A thousand words, with their genders'],
 ];
 
 const DIRECTIONS = [
@@ -52,6 +56,54 @@ const SAY_DIRECTIONS = [
   ['mix', 'Mix both', 'alternates between the two'],
 ];
 
+const GENDER_NOTE = {
+  m: 'Masculine: le, un.',
+  f: 'Feminine: la, une.',
+  mf: 'Either one, depending on who it is.',
+  'm-pl': 'Always plural, and masculine.',
+  'f-pl': 'Always plural, and feminine.',
+};
+
+/**
+ * What the voice says. The article comes with it, because the article is
+ * half the thing being learnt; the "(f)" does not, because it is a note to
+ * the eye rather than a word.
+ */
+function spoken(entry) {
+  if (entry.kind === 'n') return entry.accepts[0];
+  if (entry.kind === 'a' && entry.feminine !== entry.word) return `${entry.word}, ${entry.feminine}`;
+  return entry.word;
+}
+
+const ARTICLE = /^(le|la|les|l'|un|une|des)\s*/;
+const ELIDED = /^l'\s*/;
+
+/**
+ * A word, marked on whether you knew its gender as well as its spelling.
+ * Getting the noun right and the article wrong is its own kind of near
+ * miss, and worth saying out loud rather than folding into "not quite".
+ */
+function checkWord(input, entry) {
+  const typed = normalise(input ?? '');
+  if (!typed) return WRONG;
+
+  const accepted = entry.accepts.map(normalise);
+  if (accepted.includes(typed)) return CORRECT;
+  if (accepted.some((answer) => deaccent(answer) === deaccent(typed))) return ACCENTS;
+
+  if (entry.kind === 'n') {
+    const bare = deaccent(normalise(entry.word));
+    if (deaccent(typed.replace(ARTICLE, '')) !== bare) return WRONG;
+    if (ELIDED.test(typed)) {
+      return { level: 'close', message: 'l’ hides the gender — un or une?' };
+    }
+    return ARTICLE.test(typed)
+      ? { level: 'close', message: 'Right word — wrong gender' }
+      : { level: 'close', message: 'Right word — which gender?' };
+  }
+  return WRONG;
+}
+
 /** Which half of the exchange a phrase card is asking about. */
 const sideOf = ({ phrase, side }) => (side === 'reply'
   ? { fr: phrase.reply, en: phrase.replyEn }
@@ -60,6 +112,7 @@ const sideOf = ({ phrase, side }) => (side === 'reply'
 /** Cards there is no honest way to mark, so you grade them yourself. */
 const SELF_GRADED = new Set([
   'expression', 'phrase', 'phrase-meaning', 'everyday', 'everyday-meaning', 'message',
+  'word-meaning',
 ]);
 
 /**
@@ -69,6 +122,7 @@ const SELF_GRADED = new Set([
  */
 const NOTHING_HELD_BACK = new Set([
   'phrase', 'phrase-meaning', 'gap', 'everyday', 'everyday-meaning', 'message',
+  'word', 'word-meaning',
 ]);
 
 const CORRECT = { level: 'correct', message: 'Correct' };
@@ -100,6 +154,7 @@ const DAILY_KEYS = {
   gaps: 'conjugaison.daily.gaps.v1',
   everyday: 'conjugaison.daily.everyday.v1',
   messages: 'conjugaison.daily.messages.v1',
+  words: 'conjugaison.daily.words.v1',
 };
 
 // A forward card keeps its three-part id, so review history recorded before
@@ -133,6 +188,8 @@ export const french = {
     patterns: [...PATTERNS],
     bands: BANDS.map((band) => band.id),
     tags: [...TAGS],
+    vocabBands: VOCAB_BANDS.map((band) => band.id),
+    vocabKinds: KINDS.map((kind) => kind.id),
   },
 
   keys(s) {
@@ -174,6 +231,10 @@ export const french = {
     if (!s.bands.length) s.bands = [...this.defaults.bands];
     s.tags = (s.tags ?? []).filter((t) => TAGS.includes(t));
     if (!s.tags.length) s.tags = [...this.defaults.tags];
+    s.vocabBands = (s.vocabBands ?? []).filter((b) => VOCAB_BANDS.some((band) => band.id === b));
+    if (!s.vocabBands.length) s.vocabBands = [...this.defaults.vocabBands];
+    s.vocabKinds = (s.vocabKinds ?? []).filter((k) => KINDS.some((kind) => kind.id === k));
+    if (!s.vocabKinds.length) s.vocabKinds = [...this.defaults.vocabKinds];
   },
 
   filters(s) {
@@ -184,6 +245,29 @@ export const french = {
       type: 'radio',
       options: STUDY.map(([value, label, hint]) => ({ value, label, hint })),
     };
+
+    if (s.study === 'words') {
+      return [study, {
+        id: 'vocabBands',
+        legend: 'Words',
+        type: 'checkbox',
+        options: VOCAB_BANDS.map((band) => ({ value: band.id, label: band.label, hint: band.hint })),
+      }, {
+        id: 'vocabKinds',
+        legend: 'Kind',
+        type: 'checkbox',
+        options: KINDS.map((kind) => ({
+          value: kind.id,
+          label: kind.label,
+          hint: `${VOCAB.filter((w) => w.kind === kind.id).length}`,
+        })),
+      }, {
+        id: 'direction',
+        legend: 'Direction',
+        type: 'radio',
+        options: SAY_DIRECTIONS.map(([value, label, hint]) => ({ value, label, hint })),
+      }];
+    }
 
     // Only one way round: reading these is the skill. Nobody needs drilling
     // in how to leave out their own commas.
@@ -307,6 +391,13 @@ export const french = {
 
   cardIds(s) {
     const ids = [];
+    if (s.study === 'words') {
+      const ways = s.direction === 'mix' ? ['produce', 'recognise'] : [s.direction];
+      for (const entry of wordsFor(s.vocabBands, s.vocabKinds)) {
+        for (const way of ways) ids.push(`w|${entry.id}${way === 'recognise' ? '|r' : ''}`);
+      }
+      return ids;
+    }
     if (s.study === 'gaps') {
       return gapsForPatterns(s.patterns).map((gap) => `gap|${gap.id}`);
     }
@@ -360,6 +451,12 @@ export const french = {
   },
 
   parse(id) {
+    if (id.startsWith('w|')) {
+      const [, key, mark] = id.split('|');
+      const entry = WORD_BY_ID.get(key);
+      if (!entry) return null;
+      return { direction: mark === 'r' ? 'word-meaning' : 'word', entry };
+    }
     if (id.startsWith('msg|')) {
       const message = MESSAGE_BY_ID.get(id.slice('msg|'.length));
       return message ? { direction: 'message', message } : null;
@@ -417,6 +514,20 @@ export const french = {
 
   prompt(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'word' || direction === 'word-meaning') {
+      const { entry } = card;
+      const kind = KINDS.find((k) => k.id === entry.kind);
+      return direction === 'word'
+        ? {
+          pill: 'In French?',
+          gloss: kind.label.replace(/s$/, '').toLowerCase(),
+          lead: 'How would you say this?',
+          question: true,
+          nodes: [text(entry.en)],
+        }
+        : { pill: 'What does it mean?', question: true, nodes: [text(entry.shown)] };
+    }
 
     if (direction === 'message') {
       return {
@@ -511,6 +622,19 @@ export const french = {
 
   answer(card) {
     const { verb, tense, person, direction } = card;
+
+    if (direction === 'word' || direction === 'word-meaning') {
+      const { entry } = card;
+      const note = entry.kind === 'n' && entry.gender
+        ? GENDER_NOTE[entry.gender]
+        : (entry.kind === 'a' && entry.feminine === entry.word
+          ? 'The same in the feminine.' : undefined);
+      return {
+        answer: direction === 'word' ? entry.shown : entry.en,
+        sub: direction === 'word' ? entry.en : entry.shown,
+        note,
+      };
+    }
 
     if (direction === 'message') {
       const { en, tidy, note: why } = card.message;
@@ -655,6 +779,10 @@ export const french = {
       // The message is spoken as it would be said, which is the tidy one:
       // nobody pronounces "tkt" letter by letter.
       case 'message': return { text: card.message.tidy, withPrompt: true };
+      // Spoken with the article, since that is the half being taught — and
+      // without the "(f)", which is a note to the eye, not a word.
+      case 'word': return { text: spoken(card.entry), withPrompt: false };
+      case 'word-meaning': return { text: spoken(card.entry), withPrompt: true };
       default: return null;
     }
   },
@@ -697,6 +825,8 @@ export const french = {
     if (direction === 'expression') {
       return { question: card.expression.fr, answer: card.expression.en };
     }
+    if (direction === 'word') return { question: card.entry.en, answer: card.entry.shown };
+    if (direction === 'word-meaning') return { question: card.entry.shown, answer: card.entry.en };
     if (direction === 'message') return { question: card.message.msg, answer: card.message.en };
     if (direction === 'everyday' || direction === 'everyday-meaning') {
       const { fr, en } = card.everyday;
@@ -737,11 +867,15 @@ export const french = {
   check(input, card) {
     if (SELF_GRADED.has(card.direction)) return null;
     if (card.direction === 'gap') return checkGap(input, card.gap);
+    if (card.direction === 'word') return checkWord(input, card.entry);
     return card.direction === 'produce' ? checkAnswer(input, card) : checkRecognition(input, card);
   },
 
   placeholder(card) {
     if (card.direction === 'gap') return 'the missing word…';
+    if (card.direction === 'word') {
+      return card.entry.kind === 'n' ? 'with le or la…' : 'the French word…';
+    }
     return card.direction === 'produce' ? 'type the form…' : 'verb and tense…';
   },
 };

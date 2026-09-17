@@ -12,7 +12,7 @@ progress in the browser's `localStorage`.
 
 | | |
 |---|---|
-| **French verbs** | 88 verbs across 9 tenses, in both directions, plus 1,000 everyday sentences covering the 500 commonest words, 60 real-world messages, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
+| **French verbs** | 88 verbs across 9 tenses, in both directions, plus a 1,000-word vocabulary with genders, 1,000 everyday sentences covering the 500 commonest words, 60 real-world messages, 96 expressions in context, a 105-phrase phrasebook, 109 gap-fill sentences for the little words, and reading real sentences from novels |
 | **Geography** | 196 countries — **Flags**, **Capitals**, **Outlines** and **Borders** decks, studied singly or together, filterable by region |
 
 A subject can hold several decks when they share their material, and they can
@@ -404,6 +404,46 @@ stp, bcp).
 
 One way round only: reading these is the skill, and nobody needs drilling in
 how to leave out their own commas.
+
+### Vocabulary
+
+**Study → Vocabulary** is a thousand words, and the point of it is the
+gender.
+
+> house
+>
+> → **la maison**
+> house
+> *Feminine: la, une.*
+
+A noun is never shown bare. It arrives with its article, because the article
+is the half people fail to learn, and English → French is **marked on the
+gender as well as the spelling**:
+
+| you type | verdict |
+|---|---|
+| *la maison* or *une maison* | Correct |
+| *maison* | Right word — which gender? |
+| *le maison* | Right word — wrong gender |
+| *la maisson* | Not quite |
+
+Where the article elides it stops proving anything — *l'eau* could be either
+— so those words are shown as **l'eau (f)** and only *un* or *une* is
+accepted. The h in *l'homme* is mute and the h in *le hasard* is not, so the
+exceptions are listed rather than guessed at.
+
+Adjectives carry their feminine in brackets where it differs — **grand
+(grande)**, **heureux (heureuse)** — and stand alone where it does not:
+**rouge** says so in the note. Either form is accepted as an answer.
+
+French → English is graded by you, since a word has more meanings than a box
+can hold. English → French is typed, because there the answer is exactly one
+thing.
+
+Three bands by frequency and four kinds — nouns, verbs, adjectives, the rest
+— so the deck can be narrowed to *the first 250 nouns* and nothing else. The
+voice reads the article with the word, and never reads the "(f)", which is a
+note to the eye rather than something anyone says.
 
 ### Sentences
 
