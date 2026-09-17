@@ -122,6 +122,7 @@ export const capitals = {
   parse(id) { … },                 // an id back into a card, or null
   prompt(card) { … },              // { pill, lead, nodes }
   answer(card) { … },              // { answer, sub?, reply?, source?, note? }
+  speech(card) { … },              // { text, withPrompt } for the voice, or null
   faces(card) { … },               // how it reads in the recap
   check(input, card) { … },        // a verdict, or null if not typable
 };
@@ -512,6 +513,29 @@ missing one is a near miss rather than a pass. Where a second answer is
 genuinely said — *c'est difficile de* for *il est difficile de* — it is
 accepted, because marking someone wrong for writing what French people
 write teaches the wrong thing.
+
+### Hearing it
+
+A speaker button on the French, and by default it reads the answer out as
+soon as it shows. **Settings → Saying it out loud** turns that down to
+tap-only, or off.
+
+No audio ships with the app. Every phone already has French voices installed
+at the operating system level — Thomas and Amélie on iOS, Google's on
+Android — and the browser will lend them to a page for nothing, offline
+included. A thousand recorded sentences would be twenty megabytes against
+the seven hundred kilobytes the whole app precaches, and would break the one
+thing that makes it useful on the Tube.
+
+Two rules keep it honest. The button never appears on the prompt of a card
+that asks you to *produce* the French, because it would simply read out the
+answer; on a card where the French is the question it is there from the
+start. And a phone with no French voice installed gets no button and no
+setting at all: an English voice reading *je suis en retard* is worse than
+silence.
+
+The quality is decent on iOS and patchier on Android — enough to check a
+liaison, not enough to imitate.
 
 ### The recap
 

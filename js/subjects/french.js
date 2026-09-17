@@ -635,6 +635,30 @@ export const french = {
     return { label: 'the full table', node: table };
   },
 
+  /**
+   * The French on the card, for the voice — and whether it is already on
+   * screen before you answer. A gap card's French is the sentence with the
+   * missing word put back, so it waits for the reveal like any other answer.
+   */
+  speech(card) {
+    const { verb, tense, person, direction } = card;
+    switch (direction) {
+      case 'produce': return { text: answerFor(verb, tense, person), withPrompt: false };
+      case 'recognise': return { text: answerFor(verb, tense, person), withPrompt: true };
+      case 'reading': return { text: card.sentence.text, withPrompt: true };
+      case 'expression': return { text: card.expression.text, withPrompt: true };
+      case 'phrase': return { text: sideOf(card).fr, withPrompt: false };
+      case 'phrase-meaning': return { text: sideOf(card).fr, withPrompt: true };
+      case 'gap': return { text: card.gap.text, withPrompt: false };
+      case 'everyday': return { text: card.everyday.fr, withPrompt: false };
+      case 'everyday-meaning': return { text: card.everyday.fr, withPrompt: true };
+      // The message is spoken as it would be said, which is the tidy one:
+      // nobody pronounces "tkt" letter by letter.
+      case 'message': return { text: card.message.tidy, withPrompt: true };
+      default: return null;
+    }
+  },
+
   faces(card) {
     const { verb, tense, person, direction, sentence } = card;
     if (direction === 'expression') {
