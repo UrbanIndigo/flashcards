@@ -2,7 +2,7 @@ import {
   GRADES, TIERS, newCardState, review, isDue, formatDue, tierOf,
 } from './scheduler.js';
 import {
-  DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached,
+  DAILY_GOALS, DEFAULT_DAILY_NEW, todayKey, rollOver, remainingNew, goalReached, introduces,
 } from './daily.js';
 import { rollLog, record, summarise, accuracy, MAX_LISTED } from './recap.js';
 import { SUBJECTS, subjectById } from './subjects/index.js';
@@ -558,7 +558,9 @@ function grade_(gradeId) {
   const id = queue.shift();
   // A card counts against the day's allowance when you first answer it, not
   // when it is queued — quitting early does not spend cards you never saw.
-  if (!progress[id]) {
+  // And a card you knew well enough to retire on sight was never an
+  // introduction, so the day owes you another one.
+  if (introduces(!progress[id], gradeId)) {
     daily.introduced += 1;
     saveDaily();
   }

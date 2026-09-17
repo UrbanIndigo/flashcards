@@ -620,6 +620,19 @@ for as long as the mode is on. And a browser will not speak until the page
 has been tapped once, so the first card of a visit waits for that tap and
 says so rather than playing to itself; every card after it plays on arrival.
 
+### What counts as a new card
+
+New cards are rationed to the day's allowance; reviews always come through.
+But **a card you mark "Too easy" the first time you see it does not spend
+one of them**. You knew the word before it came up, and it went straight to
+the back of the schedule without teaching you anything — so the day still
+owes you a new one, and deals it when the queue next runs dry.
+
+The counter simply does not move, which is the clearest way of saying it.
+"Got it" and "Again" both count, because both mean the card is still being
+learnt: "Got it" brings it back later in the session for its second correct
+answer.
+
 ### The recap
 
 The finish screen ends with the day's recap:

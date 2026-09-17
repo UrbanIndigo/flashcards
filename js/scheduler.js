@@ -11,6 +11,12 @@ export const GRADES = [
   { id: 2, tone: 'easy', label: 'Too easy', key: '3', hint: 'Right, and I would rather not see it again' },
 ];
 
+/**
+ * "Too easy": right, and retired outright. Named because the day's tally
+ * has to tell it apart from the grades that mean you are still learning.
+ */
+export const EASY = 2;
+
 const MIN_EASE = 1.3;
 const MAX_EASE = 2.8;
 const MAX_INTERVAL = 365;
