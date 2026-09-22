@@ -75,13 +75,26 @@ function spoken(entry) {
   return entry.word;
 }
 
-const ARTICLE = /^(le|la|les|l'|un|une|des)\s*/;
-const ELIDED = /^l'\s*/;
+// Longest first, so "les" is not read as "le" and "une" not as "un".
+const ARTICLE = /^(les|des|une|le|la|un|l')\s*/;
+
+/**
+ * What an article proves about the gender. Three of them prove nothing:
+ * l' elides in front of a vowel, and les and des are the same for both.
+ */
+const SHOWS = { le: 'm', un: 'm', la: 'f', une: 'f', "l'": null, les: null, des: null };
+const NAMED = { m: 'masculine', f: 'feminine' };
 
 /**
  * A word, marked on whether you knew its gender as well as its spelling.
- * Getting the noun right and the article wrong is its own kind of near
- * miss, and worth saying out loud rather than folding into "not quite".
+ *
+ * The one thing this must not do is call correct French wrong. *L'automne*
+ * is how anybody would write autumn; it simply does not happen to show
+ * which gender the word is, because the article has elided. So it is
+ * accepted, and the card names the gender instead of marking you down for
+ * not having volunteered it. Leaving the article off altogether is the near
+ * miss, and putting the wrong one on is a different near miss worth saying
+ * out loud.
  */
 function checkWord(input, entry) {
   const typed = normalise(input ?? '');
@@ -90,18 +103,30 @@ function checkWord(input, entry) {
   const accepted = entry.accepts.map(normalise);
   if (accepted.includes(typed)) return CORRECT;
   if (accepted.some((answer) => deaccent(answer) === deaccent(typed))) return ACCENTS;
+  if (entry.kind !== 'n') return WRONG;
 
-  if (entry.kind === 'n') {
-    const bare = deaccent(normalise(entry.word));
-    if (deaccent(typed.replace(ARTICLE, '')) !== bare) return WRONG;
-    if (ELIDED.test(typed)) {
-      return { level: 'close', message: 'l’ hides the gender — un or une?' };
-    }
-    return ARTICLE.test(typed)
-      ? { level: 'close', message: 'Right word — wrong gender' }
+  const [, article] = typed.match(ARTICLE) ?? [];
+  if (deaccent(typed.replace(ARTICLE, '')) !== deaccent(normalise(entry.word))) return WRONG;
+  if (!article) return { level: 'close', message: 'Right word — which gender?' };
+
+  const gender = entry.gender.replace('-pl', '');
+  const shows = SHOWS[article];
+  if (shows === null) {
+    // These three prove nothing about the gender, but only count as French
+    // at all where they belong: l’ in front of a vowel, les with a noun that
+    // is always plural. "les maison" is neither.
+    const fits = article === "l'" ? entry.shown.startsWith('l’') : entry.gender.endsWith('-pl');
+    return fits
+      ? { level: 'correct', message: `Correct — ${NAMED[gender] ?? 'either one'}` }
       : { level: 'close', message: 'Right word — which gender?' };
   }
-  return WRONG;
+  if (shows !== gender && gender !== 'mf') {
+    return { level: 'close', message: 'Right word — wrong gender' };
+  }
+  // Right gender, but le or la in front of a vowel is not how it is written.
+  return entry.shown.startsWith('l’') && (article === 'le' || article === 'la')
+    ? { level: 'correct', message: `Correct — though it elides: l’${entry.word}` }
+    : CORRECT;
 }
 
 /** Which half of the exchange a phrase card is asking about. */
