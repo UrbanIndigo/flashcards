@@ -86,10 +86,17 @@ test('English to French is marked on the gender, not just the spelling', () => {
   assert.equal(french.check('la table', maison).level, 'wrong');
   assert.equal(french.check('', maison).level, 'wrong');
 
-  // l' is what you would write and says nothing about which one it is.
+  // l’eau is how anybody would write it. It does not happen to show the
+  // gender, because the article has elided — so it is accepted, and the card
+  // names the gender rather than marking correct French wrong.
   const eau = card('eau-n');
   assert.equal(french.check('une eau', eau).level, 'correct');
-  assert.match(french.check('l’eau', eau).message, /hides the gender/);
+  assert.deepEqual(french.check('l’eau', eau), { level: 'correct', message: 'Correct — feminine' });
+  assert.deepEqual(french.check('l’automne', card('automne-n')), {
+    level: 'correct', message: 'Correct — masculine',
+  });
+  assert.equal(french.check('un eau', eau).message, 'Right word — wrong gender');
+  assert.equal(french.check('eau', eau).message, 'Right word — which gender?');
 
   // An adjective is right in either gender.
   const grand = card('grand-a');
@@ -164,4 +171,42 @@ test('each way of studying deals its own cards', () => {
   // Conjugation is the one with no prefix of its own: verb|tense|person.
   const drills = french.cardIds(settings({ study: 'conjugation' }));
   assert.ok(drills.every((id) => /^[a-zà-ÿ’]+\|[a-z-]+\|\d/.test(id)), drills[0]);
+});
+
+test('an article only counts where it is French', () => {
+  // l’, les and des prove nothing about the gender, so they are accepted
+  // only where they belong: l’ in front of a vowel, les with a noun that is
+  // always plural. "les maison" is neither, and neither is "l’maison".
+  const maison = card('maison-n');
+  for (const typed of ['les maison', 'des maison', 'l’maison']) {
+    assert.deepEqual(french.check(typed, maison), {
+      level: 'close', message: 'Right word — which gender?',
+    }, typed);
+  }
+  assert.equal(french.check('les vacances', card('vacances-n')).level, 'correct');
+  assert.equal(french.check('les automne', card('automne-n')).level, 'close');
+
+  // Before a vowel it is l’, so le or la is the right gender written wrongly
+  // — right, and worth a word about it.
+  const elided = french.check('le automne', card('automne-n'));
+  assert.equal(elided.level, 'correct');
+  assert.match(elided.message, /elides: l’automne/);
+
+  // A word that is either gender takes either article.
+  const eleve = card('eleve-n');
+  for (const typed of ['un élève', 'une élève', 'l’élève']) {
+    assert.equal(french.check(typed, eleve).level, 'correct', typed);
+  }
+});
+
+test('correct French is never marked wrong', () => {
+  // Every noun's own display form, typed back, has to be accepted — that is
+  // the form the card itself showed you.
+  for (const entry of WORDS.filter((w) => w.kind === 'n')) {
+    const asShown = entry.shown.replace(/\s*\((m|f|m\/f|m pl|f pl)\)$/, '');
+    // "le/la collègue" is two answers shown at once, not one to type back.
+    if (asShown.includes('/')) continue;
+    const verdict = french.check(asShown, card(entry.id));
+    assert.equal(verdict.level, 'correct', `${asShown} → ${verdict.message}`);
+  }
 });

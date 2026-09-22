@@ -427,10 +427,19 @@ gender as well as the spelling**:
 | *le maison* | Right word — wrong gender |
 | *la maisson* | Not quite |
 
-Where the article elides it stops proving anything — *l'eau* could be either
-— so those words are shown as **l'eau (f)** and only *un* or *une* is
-accepted. The h in *l'homme* is mute and the h in *le hasard* is not, so the
-exceptions are listed rather than guessed at.
+The one thing it must never do is call correct French wrong. *L'automne* is
+how anybody would write autumn; it simply does not happen to show the
+gender, because the article has elided in front of the vowel. So it is
+**accepted, and the card names the gender instead** — *Correct — masculine*
+— rather than marking you down for not having volunteered it. Leaving the
+article off is the near miss; putting the wrong one on is a different near
+miss, and says so.
+
+Those words are still shown as **l'automne (m)**, since the display has room
+to say what the article cannot. The h in *l'homme* is mute and the h in *le
+hasard* is not, so the exceptions are listed rather than guessed at — and
+*l'* only counts in front of a word that actually elides, so *l'maison* is
+not a way round the question.
 
 Adjectives carry their feminine in brackets where it differs — **grand
 (grande)**, **heureux (heureuse)** — and stand alone where it does not:
